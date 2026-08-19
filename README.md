@@ -5,7 +5,7 @@ Agent Skills that teach AI coding agents (Claude Code, Cursor, Copilot, Windsurf
 ## Install
 
 ```bash
-npx skills add asenajs/skills
+bunx skills add asenajs/skills
 ```
 
 Or copy `skills/asena/` into your project's skill directory (e.g. `.claude/skills/asena/` for Claude Code).
