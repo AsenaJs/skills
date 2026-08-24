@@ -18,7 +18,7 @@ Index of the full official documentation. Fetch any page as raw markdown from it
 |---|---|---|
 | Controllers | https://asena.sh/raw/concepts/controllers.md | Decorator-based routing and DI in HTTP controllers |
 | Services | https://asena.sh/raw/concepts/services.md | @Service, singleton/prototype scopes, lifecycle hooks |
-| Dependency Injection | https://asena.sh/raw/concepts/dependency-injection.md | IoC container, field-based @Inject, @Strategy |
+| Dependency Injection | https://asena.sh/raw/concepts/dependency-injection.md | IoC container, field-based @Inject, @Value env injection, @Strategy, imports for package components |
 | Component Lifecycle | https://asena.sh/raw/concepts/lifecycle.md | @OnStart/@OnStop, shutdown ordering, signals, health probes |
 | Middleware | https://asena.sh/raw/concepts/middleware.md | Global, pattern-based, controller- and route-level middleware |
 | Context API | https://asena.sh/raw/concepts/context.md | Unified request/response handling across adapters |
@@ -58,7 +58,7 @@ Index of the full official documentation. Fetch any page as raw markdown from it
 |---|---|---|
 | CLI Overview | https://asena.sh/raw/cli/overview.md | Scaffolding, code generation, dev server, bundling |
 | CLI Installation | https://asena.sh/raw/cli/installation.md | Global install with Bun, verification |
-| CLI Commands | https://asena.sh/raw/cli/commands.md | create, generate, dev start, build, init, shortcuts |
+| CLI Commands | https://asena.sh/raw/cli/commands.md | create, generate, dev start, build, init, doctor, shortcuts |
 | CLI Configuration | https://asena.sh/raw/cli/configuration.md | asena-config.ts full reference |
 | Suffix Configuration | https://asena.sh/raw/cli/suffix-configuration.md | Component naming-convention customization |
 | CLI Examples | https://asena.sh/raw/cli/examples.md | Step-by-step project tutorial |
@@ -77,6 +77,6 @@ Index of the full official documentation. Fetch any page as raw markdown from it
 |---|---|---|
 | Testing Overview | https://asena.sh/raw/testing/overview.md | Built-in testing utilities, Bun test runner |
 | MockComponent API | https://asena.sh/raw/testing/mock-component.md | Automatic dependency mocking reference |
-| createTestApp | https://asena.sh/raw/testing/test-app.md | Boot the full app in a test, override components, assert HTTP |
+| createTestApp | https://asena.sh/raw/testing/test-app.md | Boot the full app in a test, the @Inject(Class) closure walk, override components, assert HTTP |
 | createWebTest | https://asena.sh/raw/testing/web-test.md | Web layer only: real controllers/middleware, auto-mocked rest |
 | Testing Examples | https://asena.sh/raw/testing/examples.md | Patterns for controllers, services, WebSockets, middleware |

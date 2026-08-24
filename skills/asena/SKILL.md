@@ -1,7 +1,7 @@
 ---
 name: asena
-description: Expert guidance for building AsenaJS applications - the IoC web framework for the Bun runtime with Spring Boot-style decorators and field-based dependency injection. Use when creating or modifying AsenaJS projects or any code importing @asenajs packages - HTTP controllers and routing, services, middleware, Zod validation, WebSocket namespaces, microservices over Redis Streams or Kafka, Redis caching, in-process events, scheduled cron tasks, static files, Drizzle ORM repositories, OpenAPI generation, OpenTelemetry tracing, testing with mockComponent/createTestApp/createWebTest, or the asena CLI. Covers @asenajs/asena, @asenajs/ergenecore, @asenajs/hono-adapter and all official packages. Triggers - asena, asenajs, AsenaServerFactory, createErgenecoreAdapter, createHonoAdapter, ergenecore, hono-adapter, @Controller, @Service, @Inject, @OnStart, @WebSocket, @MessagePattern, @StaticServe, @FrontendController, AsenaLogger, ulak, asena-config.
-version: 0.1.0
+description: Expert guidance for building AsenaJS applications - the IoC web framework for the Bun runtime with Spring Boot-style decorators and field-based dependency injection. Use when creating or modifying AsenaJS projects or any code importing @asenajs packages - HTTP controllers and routing, services, middleware, Zod validation, WebSocket namespaces, microservices over Redis Streams or Kafka, Redis caching, in-process events, scheduled cron tasks, static files, Drizzle ORM repositories, OpenAPI generation, OpenTelemetry tracing, testing with mockComponent/createTestApp/createWebTest, or the asena CLI. Covers @asenajs/asena, @asenajs/ergenecore, @asenajs/hono-adapter and all official packages. Triggers - asena, asenajs, AsenaServerFactory, createErgenecoreAdapter, createHonoAdapter, ergenecore, hono-adapter, @Controller, @Service, @Inject, @Value, @OnStart, @WebSocket, @MessagePattern, @StaticServe, @FrontendController, AsenaLogger, ulak, asena-config, asena doctor.
+version: 0.2.0
 license: MIT
 ---
 
@@ -11,22 +11,24 @@ AsenaJS is a decorator-based IoC web framework that runs ONLY on Bun. It looks l
 
 ## Version matrix
 
-Package versions are NOT aligned — do not assume one version number across packages. As of this skill's sync (2026-08):
+Package versions are NOT aligned — do not assume one version number across packages. As of this skill's sync (2026-08); **▲ marks a package this release moved**. If an installed package resolves lower than the table shows, the behaviour this file describes for it may not apply yet — check before relying on it.
 
 | Package | npm | Version | Peer deps |
 |---|---|---|---|
-| Core framework | `@asenajs/asena` | 0.10.1 | — (`reflect-metadata` only runtime dep) |
-| CLI | `@asenajs/asena-cli` | 0.10.0 | — |
-| Hono adapter | `@asenajs/hono-adapter` | 3.1.0 | `hono`, `zod` |
-| Ergenecore adapter (native Bun) | `@asenajs/ergenecore` | 3.1.0 | `zod` |
-| Redis (cache + transports) | `@asenajs/asena-redis` | 3.1.0 | `redis` |
+| Core framework | `@asenajs/asena` | 0.11.0 ▲ | — (`reflect-metadata` only runtime dep) |
+| CLI | `@asenajs/asena-cli` | 0.11.0 ▲ | `@asenajs/asena` `^0.11.0` |
+| Hono adapter | `@asenajs/hono-adapter` | 4.0.0 ▲ | `hono`, `zod` |
+| Ergenecore adapter (native Bun) | `@asenajs/ergenecore` | 4.0.0 ▲ | `zod` |
+| Redis (cache + transports) | `@asenajs/asena-redis` | 3.2.0 ▲ | `redis` |
 | Kafka (client + transport) | `@asenajs/asena-kafka` | 3.0.0 | `kafkajs` |
 | OpenAPI | `@asenajs/asena-openapi` | 2.0.0 | `zod` |
-| OpenTelemetry | `@asenajs/asena-otel` | 2.0.0 | `@opentelemetry/*` SDK family |
-| Drizzle ORM | `@asenajs/asena-drizzle` | 3.0.0 | `drizzle-orm` (+ `pg` or `mysql2` per driver) |
+| OpenTelemetry | `@asenajs/asena-otel` | 2.1.0 ▲ | `@opentelemetry/*` SDK family |
+| Drizzle ORM | `@asenajs/asena-drizzle` | 3.1.0 ▲ | `drizzle-orm` (+ `pg` or `mysql2` per driver) |
 | Logger | `@asenajs/asena-logger` | 2.0.0 | — |
 
-Every add-on package also peers `@asenajs/asena` (`^0.10.0`) and `reflect-metadata`. Requires **Bun >= 1.3.12**. There is no Node.js support — both adapters bind to `Bun.serve()`.
+Every add-on package also peers `@asenajs/asena` and `reflect-metadata`; the adapters require `^0.11.0`. Requires **Bun >= 1.3.12** (ergenecore: **>= 1.4**). There is no Node.js support — both adapters bind to `Bun.serve()`.
+
+Run `asena doctor` in an existing project to see the installed versions and whether any peer range is unsatisfied.
 
 ## Project setup
 
@@ -106,7 +108,7 @@ All **core** decorators come from `@asenajs/asena` subpaths. Only the `Context` 
 | `@asenajs/asena` | `AsenaServerFactory`, `AsenaServer`, `LifecycleState` |
 | `@asenajs/asena/decorators` | `Controller`, `Service`, `Middleware`, `Config`, `WebSocket`, `Schedule`, `EventService`, `MessageController`, `FrontendController`, `PostProcessor`, `StaticServe`, `Override`, `Component` (also re-exported here) |
 | `@asenajs/asena/decorators/http` | `Get`, `Post`, `Put`, `Patch`, `Delete`, `Head`, `Options`, `All`, `Route`, `Page` |
-| `@asenajs/asena/decorators/ioc` | `Inject`, `Strategy`, `Implements`, `OnStart`, `OnStop`, `Component`, `Scope` |
+| `@asenajs/asena/decorators/ioc` | `Inject`, `Value`, `Strategy`, `Implements`, `OnStart`, `OnStop`, `Component`, `Scope` |
 | `@asenajs/asena/adapter` | `HttpException`, `isHttpException`, `isValidationError`, adapter SPI types |
 | `@asenajs/asena/web-socket` | `AsenaWebSocketService`, `Socket` (type; alias of `AsenaSocket`) |
 | `@asenajs/asena/microservice` | `MessagePattern`, `EventPattern`, `InMemoryTransport`, transport SPI |
@@ -165,10 +167,12 @@ export class UserController {
 - **Always** inject with `@Inject` on fields. **Never** use constructor injection — injected values are undefined inside constructors.
 - **Always** do post-injection setup in a `@OnStart` method. `@PostConstruct` is a deprecated alias since 0.9 (renamed to `@OnStart`), and its timing changed in 0.10 (runs from `server.start()`, not during container scan).
 - **Never** assign to an injected field — injected fields are read-only accessors and assignment throws. In tests use `overrides`/`mockComponent` instead.
-- `@Inject` resolves registered components only — there is no value/token registry for arbitrary strings. Read env config from `process.env`. Exception: framework factory tokens (`ulak('/chat')`, `ulak.messages('svc')`, `emitter()`) are valid `@Inject` arguments — they resolve framework-provided components.
+- `@Inject` resolves registered components only — there is no value/token registry for arbitrary strings. Use **`@Value('KEY', { parse?, default? })`** for environment configuration instead of reading `process.env` inside the class. Exception: framework factory tokens (`ulak('/chat')`, `ulak.messages('svc')`, `emitter()`) are valid `@Inject` arguments — they resolve framework-provided components.
+- `@Value` fails the component's construction when the variable is unset and no `default` was given. `default`'s presence is what counts, so `0`/`''`/`null` are honoured; `parse` runs on the raw env string only. Unlike `@Inject` fields, a `@Value` field is plain and writable.
+- Components that ship in a **package** are never scanned (`node_modules` is not walked) — hand them to `AsenaServerFactory.create({ imports: [...] })`. `imports` adds to whatever else was found; every entry must carry its own component decorator or it throws.
 - `@Strategy` always yields an **array**: zero implementations gives `[]`, not an error. Guard for empty.
 - **Always** `await` every promise in handlers and lifecycle methods — an unawaited rejected promise shuts the whole server down.
-- If you bundle/minify with identifier mangling, register by explicit string name (`@Service('UserService')`, `@Inject('UserService')`) — class-name-derived registration breaks under mangling.
+- **Never** enable `minify.identifiers` — component registration is name-based and mangled class names break it in production only. `keepNames: true` does NOT rescue it (Bun 1.4.0's bundler drops class names under identifier minification regardless); `identifiers: false` is the only rule, and `asena build` now forces it. Registering by explicit string name (`@Service('UserService')`) is good practice anyway.
 - Use `server.resolve()` only outside components and only after `server.start()`; inside components always use `@Inject`.
 
 ## Architecture discipline
@@ -268,7 +272,7 @@ import { mock } from 'bun:test';
 
 await using app = await createTestApp({
   adapter: createErgenecoreAdapter({ logger: silentLogger }),
-  components: [UserController, UserService],   // explicit list — no filesystem scan
+  components: [UserController, UserService],   // roots only — the @Inject(Class) closure comes along
   overrides: { UserService: { getAll: mock(async () => [{ id: '1' }]) } },
 });
 
@@ -276,6 +280,7 @@ await app.get('/users').expectStatus(200).expectJson([{ id: '1' }]);
 ```
 
 - `overrides` keys are **registered component names**. Never `Object.assign(instance, { dep: mock })` — it throws.
+- `components` needs only the **roots**: every class reachable through `@Inject(SomeClass)` is registered automatically. A dependency injected **by name** (`@Inject('UserService')`) has no class to follow — list it or override it, or the boot fails with `createTestApp: missing dependencies:` naming the component and field.
 - Default `port: 0` (kernel-assigned free port) — never hardcode test ports.
 
 ## CLI quickstart
@@ -284,8 +289,9 @@ await app.get('/users').expectStatus(200).expectJson([{ id: '1' }]);
 |---|---|
 | `asena create [name] --adapter=<hono\|ergenecore>` | Scaffold a project |
 | `asena generate controller\|service\|middleware\|validator\|config\|websocket` (`asena g c\|s\|m\|v\|config\|ws`) | Generate a component |
-| `asena build` | Production bundle → `dist/index.asena.js` |
+| `asena build` | Production bundle → `dist/index.asena.js`. Does NOT rewrite your entry file; a hand-written `components:` array is yours and wins |
 | `asena init` | Create `asena-config.ts` |
+| `asena doctor` | Read-only project check (decorator flags, duplicate copies, peer ranges, minify settings); exit 1 on failure |
 
 Output paths and class-name suffixes come from `asena-config.ts` — see `references/cli.md`.
 
@@ -299,8 +305,9 @@ Output paths and class-name suffixes come from `asena-config.ts` — see `refere
 - **`ulak.send`/`ulak.emit` inside `@OnStart`** throws `NO_TRANSPORT` — the transport isn't connected yet; defer the first publish until after startup.
 - **`ws.publish()` excludes the sender** — send to the sender explicitly with `ws.send()`. Rooms are not enumerable — keep your own registry if you need a member list.
 - **Validation errors bypass your controller** — they surface in `onError` as `ValidationError` once a handler exists; match with `isValidationError()`, don't expect them in the route body.
-- **Cross-adapter divergences are silent** — a missing query key resolves to `''` on ergenecore but `undefined` on hono-adapter (treat falsy as absent); `setResponseHeader()` replaces on ergenecore but appends on hono-adapter. Never encode one adapter's behavior when the project might run the other.
-- **`@Transaction` and the Redis cache decorators are silently inert** until their PostProcessor subclass exists in `src/`: `@Drizzle` class extending `TransactionPostProcessor` (asena-drizzle), `@RedisCache` class extending `CachePostProcessor` (asena-redis). Methods still run — the database/Redis is just never touched.
+- **Cross-adapter divergences were closed in adapter 4.0.0** — `getQuery` returns `undefined` for an absent key and `setResponseHeader` replaces on BOTH adapters, and both have `appendResponseHeader`. On an adapter `3.x` project the old split still applies (ergenecore `''` / hono `undefined`; hono's `setResponseHeader` appends), so check the installed version before relying on either. Prefer `?? default` over `|| default` for `getQuery`.
+- **The Redis cache decorators are silently inert** until a `@RedisCache` class extending `CachePostProcessor` exists in `src/` — methods still run, Redis is just never touched. `@Transaction` used to fail the same way; since asena-drizzle 3.1 it **fails the boot** instead (`@Transaction methods are not wrapped: ...`), which also fires when a transactional class sits inside a post-processor's dependency closure.
+- **A class in a PostProcessor's dependency closure is never post-processed** — Phase A constructs it before post-processing is active. Any decorator implemented by a processor silently stops applying to it. Keep processor dependencies minimal.
 
 ## Feature → reference routing
 
@@ -309,7 +316,7 @@ Read the reference before writing code in its area:
 | Working on | Read |
 |---|---|
 | Route params, cookies, streaming, static files, HTML pages | `references/controllers-and-context.md` |
-| Scopes, `@Strategy`, lifecycle, shutdown/signals, `server.resolve()`, inheritance, `@PostProcessor` | `references/dependency-injection-and-lifecycle.md` |
+| `@Value`, `imports`, scopes, `@Strategy`, lifecycle, shutdown/signals, `server.resolve()`, inheritance, `@PostProcessor` | `references/dependency-injection-and-lifecycle.md` |
 | CORS, rate limiting, auth middleware, Zod validators | `references/middleware-and-validation.md` |
 | `@Config`, `HttpException`, shutdown, deployment | `references/configuration-and-errors.md` |
 | WebSocket namespaces, rooms, multi-pod, Ulak broker | `references/websocket-and-ulak.md` |
@@ -319,7 +326,7 @@ Read the reference before writing code in its area:
 | Logging, OpenTelemetry tracing | `references/observability.md` |
 | Swagger / OpenAPI generation | `references/openapi.md` |
 | Unit/web/full-app tests | `references/testing.md` |
-| Scaffolding, generate, build config, suffixes | `references/cli.md` |
+| Scaffolding, generate, build config, suffixes, `asena doctor` | `references/cli.md` |
 | Adapter choice, built-in middleware, Hono migration | `references/adapters.md` |
 
 ## Full documentation lookup
