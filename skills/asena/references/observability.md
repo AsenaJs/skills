@@ -106,6 +106,16 @@ import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
 export class AppOtel extends OtelTracingPostProcessor {}
 ```
 
+`@Otel` also accepts a **thunk** returning the options. It is not called at decoration time — it runs once when the post-processor initialises (`onInit`), after module-level configuration has been read, and the result is cached. Per-service values can then come from the environment, and the decorated class can live in a shared package:
+
+```typescript
+@Otel(() => ({
+  serviceName: process.env.SERVICE_NAME!,
+  traceExporter: new OTLPTraceExporter({ url: process.env.OTLP_URL }),
+}))
+export class AppOtel extends OtelTracingPostProcessor {}
+```
+
 ```typescript
 // 2) src/middlewares/AppOtelMiddleware.ts — REQUIRED local wrapper:
 // the container only scans src, so OtelTracingMiddleware in node_modules is
@@ -151,6 +161,12 @@ Methods starting with `_`, constructors, and Symbol-keyed methods are always ski
 ## OtelService API
 
 `OtelService` is an injectable `@Service`, auto-discovered — `@Inject('OtelService')`.
+
+Discovery works because your `sourceFolder` is scanned and `OtelService` is registered alongside the `@Otel` class. A project whose components come from packages rather than a scanned source folder hands it in directly instead of writing a local subclass just to make it visible:
+
+```typescript
+await AsenaServerFactory.create({ adapter, logger, imports: [OtelService] });
+```
 
 | Member | Signature | Description |
 |---|---|---|

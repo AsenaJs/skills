@@ -1,11 +1,13 @@
 # AsenaJS Dependency Injection & Lifecycle
 
-Field-based IoC wiring (`@Inject`/`@Strategy`), component scopes, `@OnStart`/`@OnStop` ordering and failure policy, inheritance rules, and `@PostProcessor` — as of `@asenajs/asena` 0.10.x.
+Field-based IoC wiring (`@Inject`/`@Value`/`@Strategy`), registering package components with `imports`, component scopes, `@OnStart`/`@OnStop` ordering and failure policy, inheritance rules, and `@PostProcessor` — as of `@asenajs/asena` 0.11.x.
 
 ## Contents
 
 - @Inject Forms
 - Injection Rules
+- @Value (configuration injection)
+- imports (components from packages)
 - @Strategy and @Implements
 - Component Scopes
 - Lifecycle: @OnStart / @OnStop
@@ -42,9 +44,60 @@ A string token resolves the component's **registered name**: the class name by d
 
 - **Field injection only.** Injected fields are `undefined` inside the constructor. Do setup in `@OnStart`, never in `constructor()`.
 - **Injected fields are read-only accessors.** `@Inject` and `@Strategy` install accessors with no setter — assignment throws, naming the field and class. In tests use the test app's `overrides` option or `mockComponent()`, never `Object.assign(instance, { dep: fake })`.
-- **`@Inject` resolves components, not values.** There is no value/constant registry: `@Inject('ENV_API_KEY')` throws `ENV_API_KEY is not registered` at startup. Read plain configuration from `process.env` (or a `@Service` that wraps it).
+- **`@Inject` resolves components, not values.** There is no value/constant registry: `@Inject('ENV_API_KEY')` throws `ENV_API_KEY is not registered` at startup. Use `@Value` for configuration (below), or a `@Service` that wraps it.
+- **A missing registration names its dependent.** `'UserService' is not registered (injected into UserController.userService)`, with the container's original error as `cause`.
 - **No circular dependencies.** `A → B → A` breaks the graph; extract shared logic into a third service both inject. For the WebSocket-service cycle specifically, inject a `ulak('/namespace')` handle instead of the `@WebSocket` class (see `https://asena.sh/raw/concepts/ulak.md`).
 - **Inside a component, always use `@Inject`.** Resolving by hand works but hides the dependency from the graph, so the container can no longer order construction around it.
+
+## @Value (configuration injection)
+
+`@Value(key, options?)` from `@asenajs/asena/decorators/ioc` reads a field from `process.env` when the container builds the component. Prefer it over reading `process.env` inside the class — the value becomes visible in the class's shape and replaceable in a test.
+
+```typescript
+import { Service } from '@asenajs/asena/decorators';
+import { Inject, Value } from '@asenajs/asena/decorators/ioc';
+
+@Service()
+export class PoolService {
+  @Inject(DataSource)
+  private dataSource: DataSource;
+
+  @Value('DB_POOL_MAX', { parse: Number, default: 10 })
+  private poolMax: number;
+
+  @Value('JWT_SECRET')          // required: no default
+  private jwtSecret: string;
+}
+```
+
+- `parse` converts the **raw environment string** only (`parse: Number`, `parse: JSON.parse`, `parse: (v) => v === 'true'`). A `default` is used as given and never goes through `parse`.
+- `default`'s **presence** is what counts, not its truthiness — `0`, `''` and `null` are honoured.
+- A field with no `default` whose variable is unset **fails construction**: `@Value('JWT_SECRET') on PoolService.jwtSecret: environment variable is not set and no default was given`. At registration for a singleton, at first resolve for a transient.
+- Precedence: **field initializer > environment**. An initializer that produced a value wins, same as `@Inject`. In tests `mockComponent`'s `overrides` adds one level in front.
+- Unlike `@Inject`/`@Strategy`, a `@Value` field is a plain **writable** property — assignment does not throw.
+- Values are read before dependencies are resolved, and a redeclared field in a subclass wins over the base class's.
+
+## imports (components from packages)
+
+The component scan walks `sourceFolder` and **never** walks `node_modules`, so a component shipped inside a package is invisible to it. `imports` is how a package hands its components in:
+
+```typescript
+await AsenaServerFactory.create({
+  adapter,
+  logger,
+  imports: [...platformComponents, OtelService],
+});
+```
+
+- **Adds, never replaces.** Whatever the scan / `components` / the build found is still registered.
+- **Every entry needs its own component decorator** (`@Service`, `@Controller`, …) — an undecorated class throws `imports entry <Name> carries no component decorator`. It is not silently dropped.
+- **Flattened one level**, so a package can export an array of its components.
+- **Name collisions still fail** with `Duplicate component name detected`.
+- `imports` alone is a valid component source: an app made only of packages boots instead of failing with `No components or configuration found`.
+
+Primary-source precedence, independent of `imports`: non-empty `components: [...]` → the list `asena build` publishes on `globalThis[Symbol.for('asena.buildComponents')]` → the `sourceFolder` scan. So a hand-written `components:` array in the entry file wins over the build's list, and the build no longer rewrites it.
+
+`createTestApp` takes the same option.
 
 ## @Strategy and @Implements
 
@@ -350,3 +403,5 @@ export class TracingPostProcessor implements ComponentPostProcessor {
 Timing per component: `constructor → @Inject → @Strategy → postProcess() → (later, from server.start()) @OnStart`. Multiple processors chain in FIFO registration order.
 
 Bootstrap runs in two phases: **Phase A** creates PostProcessors and their `@Inject` dependencies — none of which are post-processed themselves (keep processor dependencies minimal); **Phase B** creates everything else through `postProcess()`. Phase A components run their `@OnStart` at **construction** (old timing): it cannot reach microservice transports, and their `@OnStop` runs on `server.stop()` even if `start()` was never called.
+
+**Trap:** a class that *should* be wrapped and lands in a processor's dependency closure is silently left unwrapped — the wrapper's whole reason for existing stops applying with no error. `asena-drizzle` now fails the boot when it detects this for `@Transaction`; apply the same discipline to any processor whose wrapping is load-bearing, and keep such classes out of processor dependency closures.

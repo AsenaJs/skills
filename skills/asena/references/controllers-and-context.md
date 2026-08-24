@@ -1,6 +1,6 @@
 # Controllers & Context
 
-How to define HTTP routes with decorators and handle requests/responses through Asena's unified Context API, plus static file serving and frontend HTML controllers (as of @asenajs/asena 0.10.x, ergenecore / hono-adapter 3.x).
+How to define HTTP routes with decorators and handle requests/responses through Asena's unified Context API, plus static file serving and frontend HTML controllers (as of @asenajs/asena 0.11.x, ergenecore / hono-adapter 4.x).
 
 ## Contents
 
@@ -26,7 +26,7 @@ import type { Context } from '@asenajs/ergenecore';
 export class UserController {
   @Get('/')
   async list(context: Context) {
-    const page = (await context.getQuery('page')) || '1';
+    const page = (await context.getQuery('page')) ?? '1';
     return context.send({ users: [], page });
   }
 
@@ -96,11 +96,11 @@ String form `@Inject('UserService')` also resolves; give the service an explicit
 **`getParam()` is synchronous; `getQuery`, `getQueryAll`, `getBody` and all other body/cookie helpers return Promises — always `await` them.** Forgetting `await` silently yields the Promise object, not the value:
 
 ```typescript
-const page = context.getQuery('page') || '1';          // WRONG: page is a Promise, || never applies
-const page = (await context.getQuery('page')) || '1';  // correct
+const page = context.getQuery('page') ?? '1';          // WRONG: page is a Promise, ?? never applies
+const page = (await context.getQuery('page')) ?? '1';  // correct
 ```
 
-A missing query key resolves to `''` on ergenecore and `undefined` on hono-adapter (despite the `Promise<string>` type) — treat falsy as absent, never compare against one adapter's miss value.
+`getQuery` returns `Promise<string | undefined>` on BOTH adapters: `undefined` when the parameter is absent, `''` when present but empty (`?page=`). Use `?? default` rather than `|| default` — `||` also swallows a deliberate `?q=`. Ergenecore returned `''` for an absent key up to `3.x`.
 
 ```typescript
 @Get('/:userId/posts/:postId')
@@ -134,7 +134,7 @@ if (!file || !(file instanceof File)) return context.send({ error: 'No file' }, 
 | Method | Return type |
 |:-------|:------------|
 | `getParam(name)` | `string` (sync) |
-| `getQuery(name)` | `Promise<string>` |
+| `getQuery(name)` | `Promise<string \| undefined>` — `undefined` absent, `''` present-but-empty |
 | `getQueryAll(name)` | `Promise<string[]>` |
 | `getAllQueries()` | `Record<string, string \| string[]>` (sync) |
 | `getBody<T>()` | `Promise<T>` |
@@ -162,11 +162,12 @@ return context.redirect('/login');                // 302 Found
 | `send(data, statusOrOptions?)` | `Response` | JSON/text with auto content-type |
 | `html(data, statusOrOptions?)` | `Response` | HTML response |
 | `redirect(url)` | `Response` | 302 redirect |
-| `setResponseHeader(key, value)` | `void` | Header merged into the final response; also carries through to streaming responses, usable from middleware |
+| `setResponseHeader(key, value)` | `void` | **Replaces** any value already set for that header. Merged into the final response, carries through to streaming responses, usable from middleware |
+| `appendResponseHeader(key, value)` | `void` | **Appends**, keeping existing values — for multi-valued headers (`Vary`, `Link`). NOT for `Set-Cookie`; use `setCookie` |
 
 Direct header access also works: `context.res.headers.set('X-My-Header', 'v')`.
 
-**Warning:** Calling `setResponseHeader()` twice with the same key **replaces** the value on ergenecore but **appends** a second header on hono.
+Both adapters behave identically here. `setResponseHeader` appended on hono-adapter up to `3.x`, which is what duplicated `X-RateLimit-*` when a global and a route limiter overlapped; reach for `appendResponseHeader` when you actually want a list.
 
 ## Streaming
 
@@ -208,12 +209,18 @@ StreamWriter API: `write(input: Uint8Array | string)`, `writeln(input: string)`,
 
 ```typescript
 interface SSEMessage {
-  data: string;    // multi-line strings auto-split into separate data: lines
-  event?: string;  // event type name
-  id?: string;     // event ID for reconnection
-  retry?: number;  // reconnection time in ms
+  data?: string;    // multi-line strings auto-split into separate data: lines
+  comment?: string; // emitted as ": <line>" lines, invisible to EventSource clients
+  event?: string;   // event type name
+  id?: string;      // event ID for reconnection
+  retry?: number;   // reconnection time in ms
 }
 ```
+
+At least one of `data` / `comment` must be set — `writeSSE` throws otherwise. Use `comment` for a
+keep-alive ping that must not look like an event: `await stream.writeSSE({ comment: 'ping' })`
+writes `": ping\n\n"`, which keeps a proxy from closing an idle connection without firing any
+client handler.
 
 ## Cookies and headers
 
