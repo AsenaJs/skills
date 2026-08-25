@@ -1,6 +1,6 @@
 # AsenaJS Configuration & Error Handling
 
-`@Config` server configuration (serve options, error/404 hooks, global middleware, transports) and the `HttpException` / `isHttpException()` error model — as of `@asenajs/asena` 0.10.x and adapters 3.x.
+`@Config` server configuration (serve options, error/404 hooks, global middleware, transports) and the `HttpException` / `isHttpException()` error model — as of `@asenajs/asena` 0.11.x and adapters 4.x.
 
 ## Contents
 

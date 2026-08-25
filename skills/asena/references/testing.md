@@ -1,6 +1,6 @@
 # Testing
 
-Testing utilities for AsenaJS (as of `@asenajs/asena` 0.10.x): unit-level dependency mocking plus two integration harnesses, all exported from `@asenajs/asena/test`, built exclusively for Bun's test runner.
+Testing utilities for AsenaJS (as of `@asenajs/asena` 0.11.x): unit-level dependency mocking plus two integration harnesses, all exported from `@asenajs/asena/test`, built exclusively for Bun's test runner.
 
 ## Contents
 
@@ -97,6 +97,7 @@ describe('AuthService', () => {
 | `@Inject(UserService)` | Object shaped like the class — every method a `bun:test` mock; async methods resolve `null`, sync return `undefined` |
 | `@Inject(ulak('/chat'))` and other expression injections | Expression evaluated against a deep mock — every property access yields a Bun mock, every call chains, all assertable |
 | `@Inject('UserService')` | Plain `{}` — a string carries no class, so no shape can be derived. Pass an override yourself |
+| `@Value('KEY')` | Not a mock — the real resolved value, with `override > field initializer > environment` precedence |
 
 ```typescript
 // String injections need explicit doubles
@@ -109,6 +110,14 @@ mockComponent(LegacyService, {
 
 - `injections: ['stripe']` — only `mocks.stripe` is defined; unlisted fields stay `undefined`.
 - `overrides` is the **final** injected value. For expression injections (`@Inject(UserService, (s) => s.createUser)`, `ulak(...)`) the expression is skipped entirely and your override is used as-is. Presence is checked with `Object.hasOwn`, so falsy overrides (`0`, `''`, `null`, `undefined`) are injected, not ignored.
+- `overrides` also pins [`@Value`](dependency-injection-and-lifecycle.md) fields, and the environment is not read for an overridden field — so a **required** `@Value` (no `default`) does not fail the test when the variable is unset:
+
+```typescript
+const { instance } = mockComponent(RetryPolicy, {
+  overrides: { maxRetries: 7, apiKey: 'test-key' },  // @Value fields, keyed by FIELD name
+});
+```
+
 - `postConstruct` is **your** callback, run after injection. `mockComponent` never runs the component's own `@OnStart`/`@OnStop` (nothing goes through container or server). Call the hook explicitly if you want it, and use `mockComponentAsync` when the callback is async:
 
 ```typescript
@@ -200,6 +209,7 @@ Known behaviours:
 - **Validators are real.** A route validator requiring a UUID makes `app.get('/api/users/1')` return **400**, not 200 — production behaviour, and the point of a slice test.
 - **`@OnStart` runs against mocks.** A real component whose dependency was auto-mocked sees async mock methods resolve `null` during its start hook.
 - **Only `@Controller` classes go in `controllers`** — services and middlewares go through `components`.
+- **The auto-mock is where the graph stops.** `createTestApp` walks the `@Inject(Class)` closure, but `createWebTest` hands every auto-mocked name to it as an override, and an override stops the walk — so a mocked service's own dependencies are never registered. Promoting one back to real through `components` walks it normally and auto-mocks what *it* injects.
 
 ## createTestApp (full application)
 
@@ -207,17 +217,54 @@ Boots a **complete** application (Spring's `@SpringBootTest`): IoC container, ev
 
 ```typescript
 interface TestAppOptions {
-  adapter: AsenaAdapter;              // required
-  components: Class[];                // required - skips filesystem scanning entirely
-  overrides?: Record<string, object>; // service name -> replacement instance
-  logger?: ServerLogger;              // default: silentLogger
-  port?: number;                      // default: 0 (Bun picks a free port)
-  dispatch?: 'server' | 'socket';     // default: 'server'
+  adapter: AsenaAdapter;                  // required
+  components: Class[];                    // required - skips filesystem scanning entirely
+  imports?: (Class | readonly Class[])[]; // package components, in ADDITION to `components`
+  overrides?: Record<string, object>;     // service name -> replacement instance
+  logger?: ServerLogger;                  // default: silentLogger
+  port?: number;                          // default: 0 (Bun picks a free port)
+  dispatch?: 'server' | 'socket';         // default: 'server'
 }
 ```
 
-- `components` must name every class the app needs at start-up: controllers, services, middlewares, validators, configs. Nothing is scanned from disk.
+- Nothing is scanned from disk — `components` is the whole world the app sees.
+- **List the roots, not the closure.** Every class reachable through `@Inject(SomeClass)` is walked and registered for real, so naming the controllers is usually enough. Listing more is harmless.
 - `app.port` / `app.baseUrl` expose the bound address.
+
+### What the closure walk does and does not follow
+
+| | |
+|---|---|
+| `@Inject(SomeClass)` | Followed — the class is registered for real |
+| `@Inject('SomeName')` | NOT followed — a string has no class reference. List it in `components` or replace it in `overrides` |
+| A name in `overrides` | Stops the walk — the double replaces the real class, so nothing behind it is registered |
+| `@Strategy` fields | NOT followed — an empty strategy key is a legitimate `[]`, not a missing dependency |
+| `@Implements` interface key | Counts as provided, so the implementation satisfies a dependency injected by the interface name |
+
+Anything unsatisfiable fails **before the boot**, one line per problem:
+
+```
+createTestApp: missing dependencies:
+UserController.userService injects 'UserService', which is not in components or overrides
+OrderService.mailer injects Mailer, which is not a decorated component
+```
+
+Inside the container the matching failure now names the dependent too:
+`'MailService' is not registered (injected into OrderService.mail)`.
+
+### `imports`
+
+Components that ship inside a package cannot be scanned and are awkward to enumerate. Pass them
+as `imports` — registered in addition to `components`, each must carry its own component
+decorator:
+
+```typescript
+await using app = await createTestApp({
+  adapter,
+  components: [OrderController],
+  imports: [OtelService],
+});
+```
 
 ### Overrides (Spring's `@MockBean`)
 

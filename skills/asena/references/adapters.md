@@ -32,7 +32,7 @@ bun add @asenajs/ergenecore zod            # ergenecore
 bun add @asenajs/hono-adapter hono zod     # hono adapter
 ```
 
-`zod` (>= 4.3.6) and `hono` (>= 4.12.9) are **peer dependencies** — your project owns them. Never let two copies of `hono` resolve (breaks `HTTPException` matching). Both adapters need Bun >= 1.3.12 and `@asenajs/asena` >= 0.10.0.
+`zod` (>= 4.3.6) and `hono` (>= 4.12.9) are **peer dependencies** — your project owns them. Never let two copies of `hono` resolve (breaks `HTTPException` matching); `asena doctor` checks for exactly this. Adapter `4.x` needs `@asenajs/asena` `^0.11.0` and Bun >= 1.4.0 — both adapters alike.
 
 ## Bootstrap & Factory Signatures
 
@@ -96,6 +96,16 @@ Both adapters export the same base-class surface; only the import path differs (
 | Export | Use |
 |---|---|
 | `type Context` | Handler/middleware context — always `import type`. Same `AsenaContext` API on both (`getParam` sync; `getQuery`/`getBody` async; `context.send(body, status?)`); `context.req` is a native `Request` on ergenecore, a `HonoRequest` on hono |
+
+Since adapter `4.0.0` the context contract is genuinely identical — the three members that used to diverge no longer do:
+
+| Member | Both adapters | Was |
+|---|---|---|
+| `getQuery(name)` | `Promise<string \| undefined>` — `undefined` absent, `''` present-but-empty | ergenecore returned `''` for an absent key |
+| `setResponseHeader(k, v)` | Replaces any value already set | hono-adapter appended |
+| `appendResponseHeader(k, v)` | Appends, keeping existing values (`Vary`, `Link`) — not for `Set-Cookie` | did not exist |
+
+`context.req`'s type is now the only real divergence. Never write code that depends on one adapter's old behaviour.
 | `MiddlewareService` | Custom middleware base — implement `handle(context, next)` (its only abstract member) |
 | `ValidationService` | Zod validator base — define `json()`, `query()`, `param()`, etc.; register with `@Middleware({ validator: true })` |
 | `ConfigService` | `@Config()` base — override `globalMiddlewares()`, `onError()`, `onNotFound()`, `transport()` |
@@ -152,6 +162,8 @@ export class RestrictedCors extends CorsMiddleware {
 
 **Warning:** on ergenecore a bare origin string is not supported — wrap a single origin in an array.
 
+With any `origin` other than `'*'`, both middlewares now **append** `Vary: Origin` (with an already-listed guard) rather than replacing the header, so an upstream `Vary: Accept-Encoding` survives and `Origin` is never listed twice.
+
 ### RateLimiterMiddleware
 
 Token-bucket limiter; each middleware instance keeps its own bucket storage.
@@ -174,6 +186,8 @@ export class ApiRateLimiter extends RateLimiterMiddleware {
   }
 }
 ```
+
+Each `X-RateLimit-*` header appears exactly once even when a global and a route limiter both run — the innermost writes last and wins. Overlapping limiters emitted both sets on hono-adapter up to `3.x`.
 
 | Option | Type | Default |
 |---|---|---|

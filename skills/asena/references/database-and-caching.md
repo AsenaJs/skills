@@ -5,10 +5,12 @@ Drizzle ORM integration (`@asenajs/asena-drizzle`) and Redis client + declarativ
 ## Contents
 - Drizzle Setup
 - @Database Options
+- connection vs rootConnection
 - Repositories
 - Transactions
 - Multiple Databases
 - Redis Client
+- Redis Streams Helpers
 - Caching Decorators
 
 ## Drizzle Setup
@@ -20,7 +22,7 @@ bun add mysql2   # for type: 'mysql'
 # type: 'bun-sql' uses Bun's built-in SQL — no driver package
 ```
 
-Requires Bun >= 1.3.12, `@asenajs/asena` >= 0.10.0, `drizzle-orm` >= 0.45.2. SQLite is not yet supported.
+Requires Bun >= 1.4.0, `@asenajs/asena` `^0.11.0`, `drizzle-orm` `^0.45.2`. SQLite is not yet supported.
 
 **Schema-export pattern** — aggregate all schemas into one default-export object; the generics below depend on it for inference:
 
@@ -62,7 +64,16 @@ Database type generic per driver (use it on both `AsenaDatabaseService<T>` and `
 | `'mysql'` | `mysql2` | `MySql2Database<typeof Schemas>` |
 | `'bun-sql'` | Bun native | `BunSQLDatabase<typeof Schemas>` |
 
-The pool is opened by an inherited `@OnStart` and released by `@OnStop`, so `server.stop()` returns connections (needs core >= 0.10.0). Never manage the connection yourself.
+The pool is opened by an inherited `@OnStart` and released by `@OnStop`, so `server.stop()` returns connections. Never manage the connection yourself.
+
+**Lazy options.** `@Database` also accepts a thunk, evaluated when the container constructs the component — after module-level env reading — which is what lets a database service ship inside a shared package:
+
+```typescript
+@Database(() => ({ type: 'bun-sql', config: env.db, drizzleConfig: { schema: Schemas } }))
+export class MyDatabase extends AsenaDatabaseService {}
+```
+
+A thunk cannot carry a `name`, so the thunk form registers under the **decorated class's own name**. Use the object form when the registration key matters.
 
 ## @Database Options
 
@@ -102,6 +113,19 @@ export class DatabaseFromURL extends AsenaDatabaseService {}
 - **Never supply both** URL and discrete fields — drivers disagree on precedence (pg lets the URL win and falls back to `PGHOST`/defaults for keys the URL omits; mysql2 keeps truthy discrete options and ignores the URI).
 - **Warning (0.10.0):** before core 0.10.0 only `bun-sql` read `connectionString`; pg/mysql silently connected from discrete fields/env. Fixed — the five fields are now optional.
 - `ssl` precedence differs: on pg an `ssl`/`sslmode` in the URL query string overrides `config.ssl` both ways; on mysql2/bun-sql an explicit `ssl: true` beats the URL.
+
+## connection vs rootConnection
+
+`AsenaDatabaseService` exposes two accessors. The difference only shows up inside a transaction:
+
+| Accessor | Inside a `@Transaction` scope for that DB | Outside |
+|---|---|---|
+| `connection` | The **active transaction** | Pooled connection |
+| `rootConnection` | Pooled connection (ignores the ambient tx) | Pooled connection |
+
+- **Application code uses `connection`.** A hand-written query then joins the transaction its caller opened instead of committing outside it.
+- `rootConnection` is for **starting** a top-level transaction — what `REQUIRES_NEW` and `BaseRepository#transaction` use internally. Writing through it inside a transaction commits outside that transaction.
+- `connection` was always the pooled connection up to `asena-drizzle` 3.x, so hand-written queries inside `@Transaction` were silently non-transactional. Repositories are unaffected: `BaseRepository.db` does its own ALS lookup and its fallback is pinned to `rootConnection`.
 
 ## Repositories
 
@@ -153,7 +177,7 @@ All methods are async. Inject repositories into services with `@Inject('UserRepo
 
 `@Transaction` is Spring-style, propagated through `AsyncLocalStorage` — repository calls inside a wrapped method join the active transaction with no `tx` parameter.
 
-**Setup (required):** subclass `TransactionPostProcessor` inside your source folder (AsenaJS scans `src`, never `node_modules`). Without this class `@Transaction` is **silently inert**.
+**Setup (required):** subclass `TransactionPostProcessor` inside your source folder (AsenaJS scans `src`, never `node_modules`). Without this class the **boot fails** — see the boot guard below.
 
 ```typescript
 // src/config/AppDrizzle.ts
@@ -192,6 +216,24 @@ Options: `@Transaction({ database?, propagation?, isolationLevel?, accessMode? }
 - **Never** use arrow-function class properties (`run = async () => ...`) — they live on the instance, not the prototype, and are not intercepted. Use `async method() {}`.
 - Programmatic boundary: `repo.transaction(cb, opts)` (see table above). Full query builder inside a tx: `this.repo.db.transaction(async (tx) => { ... })`.
 
+### Boot guard: unwrapped `@Transaction` methods
+
+An unwrapped `@Transaction` method used to be invisible — the method returned, the writes landed, the tests passed, and nothing was atomic. The boot now fails instead, naming every one:
+
+```
+@Transaction methods are not wrapped: AccountService.register - they would run with autocommit.
+Register a TransactionPostProcessor subclass in your source folder (@Drizzle({ defaultDb: '...' })
+export class AppDrizzle extends TransactionPostProcessor {}) and keep transactional classes out of
+a post-processor's dependency closure.
+```
+
+Two causes:
+
+1. **No `@Drizzle` subclass in the source folder** — nothing wraps anything. Add the class above.
+2. **A transactional class inside a post-processor's dependency closure** — a `@Drizzle` subclass, or something it injects, `@Inject`s the class. Those are constructed in bootstrap Phase A, before post-processing is active, and can never be wrapped. Keep transactional services out of that closure.
+
+The check runs once per container from the first database service's `@OnStart`; when the only database service is itself a post-processor dependency it is deferred to the first `connection`/`rootConnection` read after registration. Test doubles seeded through `overrides` and transient registrations are skipped.
+
 ## Multiple Databases
 
 ```typescript
@@ -217,7 +259,7 @@ bun add @asenajs/asena-redis          # Bun-native RedisClient (default adapter)
 bun add @asenajs/asena-redis redis    # only if using adapter: 'node-redis'
 ```
 
-Requires Bun >= 1.3.12, `@asenajs/asena` >= 0.10.0. Zero runtime dependencies.
+Requires Bun >= 1.4.0, `@asenajs/asena` `^0.11.0`; the `redis` peer is `^5.12.1`. Zero runtime dependencies.
 
 ```typescript
 import { Redis, AsenaRedisService } from '@asenajs/asena-redis';
@@ -232,6 +274,15 @@ export class AppRedis extends AsenaRedisService {}
 
 Inject with `@Inject('AppRedis')`. Connect/disconnect are automatic: `@OnStart` connects, `@OnStop` closes subscribers then the main client (a user-supplied `client` option is adopted and closed too).
 
+**Lazy options.** `@Redis` also accepts a thunk, resolved when the service is constructed rather than when the class is defined — so a Redis service in a shared package can read the consuming app's environment:
+
+```typescript
+@Redis(() => ({ config: { url: process.env.REDIS_URL } }))
+export class AppRedis extends AsenaRedisService {}
+```
+
+A thunk cannot carry a `name`; the thunk form registers under the decorated class's own name.
+
 `RedisConfig`: `url` (`redis[s]://[[user][:pass]@][host][:port][/db]`), or `host` (default `'localhost'`) / `port` (default `6379`) / `username` / `password` / `db`; `connectionTimeout` (ms, default 10000), `autoReconnect` (default true), `maxRetries` (default 10), `enableOfflineQueue` (default true), `tls?: boolean | TLSOptions`, `name`. Bun-adapter-only (ignored on node-redis): `idleTimeout` (default 0), `enableAutoPipelining` (default true).
 
 ### Operations
@@ -241,7 +292,22 @@ Inject with `@Inject('AppRedis')`. Connect/disconnect are automatic: `@OnStart` 
 | String | `get(key)` (returns `string \| null` — **`null` only on a miss**, cached falsy values are hits), `set(key, value, ttl?)` (ttl seconds), `del(...keys)`, `exists(key)`, `incr(key)`, `decr(key)`, `expire(key, seconds)`, `ttl(key)`, `keys(pattern)` |
 | Hash | `hget(key, field)`, `hmset(key, ['f1','v1','f2','v2'])`, `hmget(key, fields)` |
 | Set | `sadd(key, member)`, `srem(key, member)`, `smembers(key)`, `sismember(key, member)` |
-| Raw/lifecycle | `send(command, args)`, `client` (underlying `RedisClientAdapter`), `createSubscriber()` (duplicate connection for pub/sub, auto-closed on stop), `testConnection()`, `disconnect()` (called for you by `@OnStop`) |
+| Raw/lifecycle | `send(command, args)`, `ping(timeoutMs = 1000)`, `client` (underlying `RedisClientAdapter`), `createSubscriber()` (duplicate connection for pub/sub, auto-closed on stop), `testConnection()`, `disconnect()` (called for you by `@OnStop`) |
+
+**`ping()` is bounded on purpose.** With `enableOfflineQueue` on (the default), a command against an unreachable Redis does not fail — it waits in the queue, so an unbounded readiness probe hangs forever. `ping()` rejects with `Redis PING timed out after <n>ms`, and `testConnection()` goes through it, so a probe against a down Redis returns `false` within a second instead of never returning.
+
+## Redis Streams Helpers
+
+The Redis Streams wrappers the microservice transport uses are exported from the package root. They take any `RedisClientAdapter` and normalize RESP2 (node-redis) and RESP3 (Bun) reply shapes, so consumer code never branches on the adapter — use them instead of re-implementing the normalisation for a DLQ inspector or a backfill script.
+
+`xadd`, `xrange`, `xack`, `xgroupCreate`, `xgroupDelConsumer`, `xreadgroup`, `xpending`, `xpendingConsumer`, `xinfoConsumers`, `xclaim`, `entryTimestamp`, plus the normalizers `normalizeStreamsReply`, `normalizeEntries`, `normalizeFields` and the types `StreamEntry`, `PendingEntry`, `ConsumerInfo`.
+
+```typescript
+import { xrange } from '@asenajs/asena-redis';
+
+// xrange(client, key, start = '-', end = '+', count?) -> StreamEntry[] ({ id, fields }) in id order
+const recent = await xrange(redis.client, 'orders', '-', '+', 10);
+```
 
 ## Caching Decorators
 

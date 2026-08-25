@@ -18,7 +18,7 @@ Logging with `@asenajs/asena-logger` and tracing/metrics with `@asenajs/asena-ot
 bun add @asenajs/asena-logger
 ```
 
-Winston-based; implements the `ServerLogger` shape. As published (2.0.0) it peers `@asenajs/asena` `^0.10.0`. Requires Bun >= 1.3.12.
+Winston-based; implements the `ServerLogger` shape. As published (3.0.0) it peers `@asenajs/asena` `^0.11.0`. Requires Bun >= 1.4.0.
 
 **Standard pattern** — export one instance globally and import it everywhere:
 
@@ -83,7 +83,7 @@ bun add @asenajs/asena-otel @opentelemetry/api @opentelemetry/resources @opentel
 bun add @opentelemetry/exporter-trace-otlp-http @opentelemetry/exporter-metrics-otlp-http
 ```
 
-Requires Bun >= 1.3.12, `@asenajs/asena` >= 0.10.0. One runtime dependency (`@opentelemetry/context-async-hooks`); the rest are peers.
+Requires Bun >= 1.4.0, `@asenajs/asena` `^0.11.0`. One runtime dependency (`@opentelemetry/context-async-hooks`); the rest are peers.
 
 Three steps — all three are required for HTTP tracing:
 
@@ -103,6 +103,16 @@ import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
   }),
   autoTrace: { services: true, controllers: true },
 })
+export class AppOtel extends OtelTracingPostProcessor {}
+```
+
+`@Otel` also accepts a **thunk** returning the options. It is not called at decoration time — it runs once when the post-processor initialises (`onInit`), after module-level configuration has been read, and the result is cached. Per-service values can then come from the environment, and the decorated class can live in a shared package:
+
+```typescript
+@Otel(() => ({
+  serviceName: process.env.SERVICE_NAME!,
+  traceExporter: new OTLPTraceExporter({ url: process.env.OTLP_URL }),
+}))
 export class AppOtel extends OtelTracingPostProcessor {}
 ```
 
@@ -150,7 +160,11 @@ Methods starting with `_`, constructors, and Symbol-keyed methods are always ski
 
 ## OtelService API
 
-`OtelService` is an injectable `@Service`, auto-discovered — `@Inject('OtelService')`.
+`OtelService` is an injectable `@Service` — `@Inject('OtelService')`. It ships inside the package, and the component scan never walks `node_modules`, so hand it in through `imports` first; without that, the first `@Inject('OtelService')` fails the boot with `OtelService is not registered`. Skip it when nothing injects `OtelService` — auto-tracing and the middleware do not depend on it:
+
+```typescript
+await AsenaServerFactory.create({ adapter, logger, imports: [OtelService] });
+```
 
 | Member | Signature | Description |
 |---|---|---|

@@ -1,6 +1,6 @@
 # Middleware & Validation
 
-How to write Asena middleware, attach it at the four levels, use adapter built-ins, and validate requests with Zod validators (as of @asenajs/asena 0.10.x, ergenecore / hono-adapter 3.x).
+How to write Asena middleware, attach it at the four levels, use adapter built-ins, and validate requests with Zod validators (as of @asenajs/asena 0.11.x, ergenecore / hono-adapter 4.x).
 
 ## Contents
 
