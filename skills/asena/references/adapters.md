@@ -32,7 +32,7 @@ bun add @asenajs/ergenecore zod            # ergenecore
 bun add @asenajs/hono-adapter hono zod     # hono adapter
 ```
 
-`zod` (>= 4.3.6) and `hono` (>= 4.12.9) are **peer dependencies** — your project owns them. Never let two copies of `hono` resolve (breaks `HTTPException` matching); `asena doctor` checks for exactly this. Adapter `4.x` needs `@asenajs/asena` >= 0.11.0; hono-adapter needs Bun >= 1.3.12, ergenecore >= 1.4.
+`zod` (>= 4.3.6) and `hono` (>= 4.12.9) are **peer dependencies** — your project owns them. Never let two copies of `hono` resolve (breaks `HTTPException` matching); `asena doctor` checks for exactly this. Adapter `4.x` needs `@asenajs/asena` `^0.11.0` and Bun >= 1.4.0 — both adapters alike.
 
 ## Bootstrap & Factory Signatures
 

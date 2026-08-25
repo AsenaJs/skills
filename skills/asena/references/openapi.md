@@ -8,7 +8,7 @@ Automatic OpenAPI 3.1 spec generation (`@asenajs/asena-openapi`) from existing v
 bun add @asenajs/asena-openapi
 ```
 
-Requires Bun >= 1.3.12, `@asenajs/asena` >= 0.10.0, zod `^4.3.6`. Zero runtime dependencies (peers: asena, reflect-metadata, zod).
+Requires Bun >= 1.4.0, `@asenajs/asena` `^0.11.0`, zod `^4.3.6`. Zero runtime dependencies (peers: asena, reflect-metadata, zod).
 
 ```typescript
 import { OpenApi, OpenApiPostProcessor } from '@asenajs/asena-openapi';

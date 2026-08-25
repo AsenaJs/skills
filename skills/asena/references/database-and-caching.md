@@ -22,7 +22,7 @@ bun add mysql2   # for type: 'mysql'
 # type: 'bun-sql' uses Bun's built-in SQL — no driver package
 ```
 
-Requires Bun >= 1.3.12, `@asenajs/asena` >= 0.10.0, `drizzle-orm` >= 0.45.2. SQLite is not yet supported.
+Requires Bun >= 1.4.0, `@asenajs/asena` `^0.11.0`, `drizzle-orm` `^0.45.2`. SQLite is not yet supported.
 
 **Schema-export pattern** — aggregate all schemas into one default-export object; the generics below depend on it for inference:
 
@@ -64,7 +64,7 @@ Database type generic per driver (use it on both `AsenaDatabaseService<T>` and `
 | `'mysql'` | `mysql2` | `MySql2Database<typeof Schemas>` |
 | `'bun-sql'` | Bun native | `BunSQLDatabase<typeof Schemas>` |
 
-The pool is opened by an inherited `@OnStart` and released by `@OnStop`, so `server.stop()` returns connections (needs core >= 0.10.0). Never manage the connection yourself.
+The pool is opened by an inherited `@OnStart` and released by `@OnStop`, so `server.stop()` returns connections. Never manage the connection yourself.
 
 **Lazy options.** `@Database` also accepts a thunk, evaluated when the container constructs the component — after module-level env reading — which is what lets a database service ship inside a shared package:
 
@@ -259,7 +259,7 @@ bun add @asenajs/asena-redis          # Bun-native RedisClient (default adapter)
 bun add @asenajs/asena-redis redis    # only if using adapter: 'node-redis'
 ```
 
-Requires Bun >= 1.3.12, `@asenajs/asena` >= 0.10.0. Zero runtime dependencies.
+Requires Bun >= 1.4.0, `@asenajs/asena` `^0.11.0`; the `redis` peer is `^5.12.1`. Zero runtime dependencies.
 
 ```typescript
 import { Redis, AsenaRedisService } from '@asenajs/asena-redis';

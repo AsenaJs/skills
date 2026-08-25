@@ -1,6 +1,6 @@
 # Asena CLI
 
-Command and configuration reference for `@asenajs/asena-cli` (as of 0.11.x): project scaffolding, code generation, dev runs, diagnostics, and production bundling. Requires Bun ≥ 1.3.12.
+Command and configuration reference for `@asenajs/asena-cli` (as of 0.11.x): project scaffolding, code generation, dev runs, diagnostics, and production bundling. Requires Bun >= 1.4.0; depends on `@asenajs/asena` `^0.11.0` directly.
 
 ## Contents
 

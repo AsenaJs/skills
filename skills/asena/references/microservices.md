@@ -123,7 +123,7 @@ export class AppConfig extends ConfigService {
 }
 ```
 
-Kafka — same shape, only the transport line changes (`@asenajs/asena-kafka`, peer `kafkajs` ^2.2, core 0.10.0+; broker pinned to Kafka 2.8–3.9):
+Kafka — same shape, only the transport line changes (`@asenajs/asena-kafka`, peer `kafkajs` ^2.2, core `^0.11.0`; broker pinned to Kafka 2.8–3.9):
 
 ```typescript
 import { KafkaMicroserviceTransport } from '@asenajs/asena-kafka';

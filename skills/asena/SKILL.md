@@ -11,22 +11,22 @@ AsenaJS is a decorator-based IoC web framework that runs ONLY on Bun. It looks l
 
 ## Version matrix
 
-Package versions are NOT aligned — do not assume one version number across packages. As of this skill's sync (2026-08); **▲ marks a package this release moved**. If an installed package resolves lower than the table shows, the behaviour this file describes for it may not apply yet — check before relying on it.
+Package versions are NOT aligned — do not assume one version number across packages. As of this skill's sync (2026-08-26, the 0.11 release). If an installed package resolves lower than the table shows, the behaviour this file describes for it may not apply — check before relying on it.
 
 | Package | npm | Version | Peer deps |
 |---|---|---|---|
-| Core framework | `@asenajs/asena` | 0.11.0 ▲ | — (`reflect-metadata` only runtime dep) |
-| CLI | `@asenajs/asena-cli` | 0.11.0 ▲ | `@asenajs/asena` `^0.11.0` |
-| Hono adapter | `@asenajs/hono-adapter` | 4.0.0 ▲ | `hono`, `zod` |
-| Ergenecore adapter (native Bun) | `@asenajs/ergenecore` | 4.0.0 ▲ | `zod` |
-| Redis (cache + transports) | `@asenajs/asena-redis` | 3.2.0 ▲ | `redis` |
-| Kafka (client + transport) | `@asenajs/asena-kafka` | 3.0.0 | `kafkajs` |
-| OpenAPI | `@asenajs/asena-openapi` | 2.0.0 | `zod` |
-| OpenTelemetry | `@asenajs/asena-otel` | 2.1.0 ▲ | `@opentelemetry/*` SDK family |
-| Drizzle ORM | `@asenajs/asena-drizzle` | 3.1.0 ▲ | `drizzle-orm` (+ `pg` or `mysql2` per driver) |
-| Logger | `@asenajs/asena-logger` | 2.0.0 | — |
+| Core framework | `@asenajs/asena` | 0.11.0 | — (`reflect-metadata` only runtime dep) |
+| CLI | `@asenajs/asena-cli` | 0.11.0 | — (depends on `@asenajs/asena` `^0.11.0` directly) |
+| Hono adapter | `@asenajs/hono-adapter` | 4.0.0 | `hono`, `zod` |
+| Ergenecore adapter (native Bun) | `@asenajs/ergenecore` | 4.0.0 | `zod` |
+| Redis (cache + transports) | `@asenajs/asena-redis` | 4.0.0 | `redis` |
+| Kafka (client + transport) | `@asenajs/asena-kafka` | 4.0.0 | `kafkajs` |
+| OpenAPI | `@asenajs/asena-openapi` | 3.0.0 | `zod` |
+| OpenTelemetry | `@asenajs/asena-otel` | 3.0.0 | `@opentelemetry/*` SDK family |
+| Drizzle ORM | `@asenajs/asena-drizzle` | 4.0.0 | `drizzle-orm` (+ `pg` or `mysql2` per driver) |
+| Logger | `@asenajs/asena-logger` | 3.0.0 | — |
 
-Every add-on package also peers `@asenajs/asena` and `reflect-metadata`; the adapters require `^0.11.0`. Requires **Bun >= 1.3.12** (ergenecore: **>= 1.4**). There is no Node.js support — both adapters bind to `Bun.serve()`.
+Every adapter and add-on package peers `@asenajs/asena` `^0.11.0`; `reflect-metadata` comes in through core. Every package requires **Bun >= 1.4.0**. There is no Node.js support — both adapters bind to `Bun.serve()`.
 
 Run `asena doctor` in an existing project to see the installed versions and whether any peer range is unsatisfied.
 
