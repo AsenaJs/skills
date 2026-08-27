@@ -16,12 +16,12 @@ import { OpenApi, OpenApiPostProcessor } from '@asenajs/asena-openapi';
 @OpenApi({
   info: { title: 'My API', version: '1.0.0' },
   path: '/api/openapi',
-  ui: true,
+  ui: 'scalar', // or true / 'swagger'
 })
 export class AppOpenApi extends OpenApiPostProcessor {}
 ```
 
-Auto-discovered by the IoC container — no registration. Serves `GET /api/openapi` (OpenAPI 3.1 JSON, JSON Schema draft-2020-12) and `GET /api/openapi/ui` (Swagger UI). The PostProcessor intercepts every `@Controller` during IoC setup, extracts every route decorator's metadata (`@Get` … `@Patch`, `@All`), and converts validator Zod schemas via `z.toJSONSchema()` — validators validate requests AND generate the docs.
+Auto-discovered by the IoC container — no registration. Serves `GET /api/openapi` (OpenAPI 3.1 JSON, JSON Schema draft-2020-12) and `GET /api/openapi/ui` (Swagger UI or Scalar API Reference). The PostProcessor intercepts every `@Controller` during IoC setup, extracts every route decorator's metadata (`@Get` … `@Patch`, `@All`), and converts validator Zod schemas via `z.toJSONSchema()` — validators validate requests AND generate the docs.
 
 ## Validator → Spec Mapping
 
@@ -70,16 +70,20 @@ export class ApiController {
 }
 ```
 
-## Options & Swagger UI
+## Options & docs UI
 
 | Option | Type | Default | Description |
 |---|---|---|---|
 | `info` | `{ title, version, description? }` | — | Required API metadata |
 | `path` | `string` | `'/openapi'` | Base path for spec and UI endpoints |
-| `ui` | `boolean` | `false` | Swagger UI at `{path}/ui` |
+| `ui` | `boolean \| 'swagger' \| 'scalar' \| { provider, configuration? }` | — | Docs UI at `{path}/ui`. `true` / `'swagger'` = Swagger UI (`swagger-ui-dist@5`, unpkg); `'scalar'` = Scalar API Reference (`@scalar/api-reference@1`, jsdelivr). Object form passes `configuration` straight into `SwaggerUIBundle` / `Scalar.createApiReference`; its keys override the defaults, `url` included. Unknown provider → error at boot |
 | `servers` | `ServerObject[]` | — | e.g. `[{ url: 'https://api.example.com', description: 'Production' }]` |
 | `converters` | `SchemaConverter[]` | `[ZodSchemaConverter]` | Pluggable — implement `SchemaConverter` for custom schema types |
 
-**Warning:** Swagger UI loads `swagger-ui-dist@5` from the unpkg CDN — it needs internet access. In air-gapped production, set `ui: false` and use an external docs tool.
+**Warning:** both UIs load from a CDN — they need internet access. In air-gapped production, leave `ui` unset and use an external docs tool.
+
+## Descriptions
+
+Docs text comes from code you already write: `@Controller({ path, description })` → tag description; `@Get({ path, summary, description })` (any verb decorator) → operation summary/description; `.describe()` on a `query()`/`param()`/`header()` field → parameter description, on a field inside a body/response schema → property description; `.describe()` on the `json()`/`form()` object itself → `requestBody.description` (the schema does not carry it, so it renders once); `response()` detailed form → response description.
 
 Deeper detail: `https://asena.sh/raw/packages/openapi.md`.
