@@ -1,7 +1,7 @@
 ---
 name: asena
 description: Expert guidance for building AsenaJS applications - the IoC web framework for the Bun runtime with Spring Boot-style decorators and field-based dependency injection. Use when creating or modifying AsenaJS projects or any code importing @asenajs packages - HTTP controllers and routing, services, middleware, Zod validation, WebSocket namespaces, microservices over Redis Streams or Kafka, Redis caching, in-process events, scheduled cron tasks, static files, Drizzle ORM repositories, OpenAPI generation, OpenTelemetry tracing, testing with mockComponent/createTestApp/createWebTest, or the asena CLI. Covers @asenajs/asena, @asenajs/ergenecore, @asenajs/hono-adapter and all official packages. Triggers - asena, asenajs, AsenaServerFactory, createErgenecoreAdapter, createHonoAdapter, ergenecore, hono-adapter, @Controller, @Service, @Inject, @Value, @OnStart, @WebSocket, @MessagePattern, @StaticServe, @FrontendController, AsenaLogger, ulak, asena-config, asena doctor.
-version: 0.2.0
+version: 0.2.1
 license: MIT
 ---
 
@@ -11,7 +11,7 @@ AsenaJS is a decorator-based IoC web framework that runs ONLY on Bun. It looks l
 
 ## Version matrix
 
-Package versions are NOT aligned — do not assume one version number across packages. As of this skill's sync (2026-08-26, the 0.11 release). If an installed package resolves lower than the table shows, the behaviour this file describes for it may not apply — check before relying on it.
+Package versions are NOT aligned — do not assume one version number across packages. As of this skill's sync (2026-08-27, the 0.11 release plus asena-openapi 3.1.0). If an installed package resolves lower than the table shows, the behaviour this file describes for it may not apply — check before relying on it.
 
 | Package | npm | Version | Peer deps |
 |---|---|---|---|
@@ -21,7 +21,7 @@ Package versions are NOT aligned — do not assume one version number across pac
 | Ergenecore adapter (native Bun) | `@asenajs/ergenecore` | 4.0.0 | `zod` |
 | Redis (cache + transports) | `@asenajs/asena-redis` | 4.0.0 | `redis` |
 | Kafka (client + transport) | `@asenajs/asena-kafka` | 4.0.0 | `kafkajs` |
-| OpenAPI | `@asenajs/asena-openapi` | 3.0.0 | `zod` |
+| OpenAPI | `@asenajs/asena-openapi` | 3.1.0 | `zod` |
 | OpenTelemetry | `@asenajs/asena-otel` | 3.0.0 | `@opentelemetry/*` SDK family |
 | Drizzle ORM | `@asenajs/asena-drizzle` | 4.0.0 | `drizzle-orm` (+ `pg` or `mysql2` per driver) |
 | Logger | `@asenajs/asena-logger` | 3.0.0 | — |
@@ -324,7 +324,7 @@ Read the reference before writing code in its area:
 | `@MessagePattern`, Redis Streams, Kafka (client + transport), headless services | `references/microservices.md` |
 | Drizzle repositories, transactions, Redis caching | `references/database-and-caching.md` |
 | Logging, OpenTelemetry tracing | `references/observability.md` |
-| Swagger / OpenAPI generation | `references/openapi.md` |
+| OpenAPI generation, Swagger UI / Scalar docs page | `references/openapi.md` |
 | Unit/web/full-app tests | `references/testing.md` |
 | Scaffolding, generate, build config, suffixes, `asena doctor` | `references/cli.md` |
 | Adapter choice, built-in middleware, Hono migration | `references/adapters.md` |
