@@ -95,7 +95,7 @@ Both adapters export the same base-class surface; only the import path differs (
 
 | Export | Use |
 |---|---|
-| `Context` | Handler/middleware context — `import type` for plain annotations; a value import when calling `Context.define()` for a [route context contract](middleware-and-validation.md). A contract class from one adapter fails the boot on the other. Same `AsenaContext` API on both (`getParam` sync; `getQuery`/`getBody` async; `context.send(body, status?)`); `context.req` is a native `Request` on ergenecore, a `HonoRequest` on hono |
+| `Context` | Handler/middleware context — `import type` for plain annotations; a value import when calling `Context.define()` for a route context contract (`middleware-and-validation.md`). A contract class from one adapter fails the boot on the other. Same `AsenaContext` API on both (`getParam` sync; `getQuery`/`getBody` async; `context.send(body, status?)`); `context.req` is a native `Request` on ergenecore, a `HonoRequest` on hono |
 
 Since adapter `4.0.0` the context contract is genuinely identical — the three members that used to diverge no longer do:
 

@@ -164,7 +164,7 @@ asena doctor --json   # the result array as JSON
 | `duplicate-packages` | `@asenajs/asena`, `hono`, `zod` each resolve to a single version under `node_modules` (incl. the `.bun` store) |
 | `peer-ranges` | Every installed `@asenajs/*` package's peer range for `@asenajs/asena` is satisfied by the installed core |
 
-Run it first when diagnosing the silent failures below — `duplicate-packages` in particular is the fastest way to rule the `instanceof`/`HttpException` trap in or out.
+Run it first when diagnosing the silent failures below — `duplicate-packages` in particular is the fastest way to rule the `instanceof`/`HttpException` trap in or out. Known false positive: on a core 0.12 project, CLI 0.11.0 brings its own `@asenajs/asena` 0.11.x under `node_modules/@asenajs/asena-cli/node_modules/`, which this check fails on although the app never loads it; only a second copy at any other path is the real trap.
 
 ## asena init
 

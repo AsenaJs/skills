@@ -132,7 +132,6 @@ export class ApiRateLimiter extends RateLimiterMiddleware {
       capacity: 100,          // 100 requests
       refillRate: 100 / 60,   // per minute
       message: 'Rate limit exceeded',
-      trustProxy: true,       // ONLY behind exactly one reverse proxy — omit when clients connect directly; see below
       keyGenerator: (ctx) => ctx.getValue('user')?.id || 'anonymous', // optional
       skip: (ctx) => ctx.getValue('user')?.role === 'admin',          // optional
       cost: (ctx) => (ctx.req.url.includes('/export') ? 10 : 1),      // optional
@@ -171,7 +170,7 @@ export class ChatOrigin extends WebSocketOriginMiddleware {
   }
 }
 
-@WebSocket({ path: 'chat', middlewares: [ChatOrigin, SessionAuth] })
+@WebSocket({ path: '/chat', middlewares: [ChatOrigin, SessionAuth] })
 export class ChatSocket extends AsenaWebSocketService<ChatData> { /* ... */ }
 ```
 
