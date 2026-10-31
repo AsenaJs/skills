@@ -16,7 +16,7 @@ Package versions are NOT aligned — do not assume one version number across pac
 | Package | npm | Version | Peer deps |
 |---|---|---|---|
 | Core framework | `@asenajs/asena` | 0.12.1 | — (`reflect-metadata` only runtime dep) |
-| CLI | `@asenajs/asena-cli` | 0.11.0 | — (depends on `@asenajs/asena` `^0.11.0` directly) |
+| CLI | `@asenajs/asena-cli` | 0.11.1 | — (no `@asenajs/asena` dependency; works with the project's core) |
 | Hono adapter | `@asenajs/hono-adapter` | 5.0.2 | `hono`, `zod`, core `^0.12.0` |
 | Ergenecore adapter (native Bun) | `@asenajs/ergenecore` | 5.0.1 | `zod`, core `^0.12.0` |
 | Redis (cache + transports) | `@asenajs/asena-redis` | 4.0.1 | `redis` |
@@ -26,7 +26,7 @@ Package versions are NOT aligned — do not assume one version number across pac
 | Drizzle ORM | `@asenajs/asena-drizzle` | 4.0.1 | `drizzle-orm` (+ `pg` or `mysql2` per driver) |
 | Logger | `@asenajs/asena-logger` | 3.0.1 | — |
 
-Both adapters and `asena-openapi` peer `@asenajs/asena` `^0.12.0`; the other add-ons (redis, kafka, otel, drizzle, logger) peer `^0.11.0 || ^0.12.0`. `reflect-metadata` comes in through core. `asena-cli` 0.11.0 still depends on `@asenajs/asena` `^0.11.0`, so a 0.12 project with the CLI installed gets a second, nested copy at `node_modules/@asenajs/asena-cli/node_modules/@asenajs/asena` (0.11.x). It belongs to the CLI and app code never resolves it; `asena doctor`'s `duplicate-packages` check still reports it as a failure, and `bun update @asenajs/asena` does not remove it. Every package requires **Bun >= 1.4.0**. There is no Node.js support — both adapters bind to `Bun.serve()`.
+Both adapters and `asena-openapi` peer `@asenajs/asena` `^0.12.0`; the other add-ons (redis, kafka, otel, drizzle, logger) peer `^0.11.0 || ^0.12.0`. `reflect-metadata` comes in through core. Use `asena-cli` >= 0.11.1 on a 0.12 project — 0.11.0 still depended on core `^0.11.0` and installed a second, nested core copy that `asena doctor` reports as a duplicate. Every package requires **Bun >= 1.4.0**. There is no Node.js support — both adapters bind to `Bun.serve()`.
 
 Run `asena doctor` in an existing project to see the installed versions and whether any peer range is unsatisfied.
 
@@ -326,7 +326,7 @@ Output paths and class-name suffixes come from `asena-config.ts` — see `refere
 
 ## Critical pitfalls
 
-- **Duplicate module copies** — the #1 silent killer. Two copies of `@asenajs/asena` or `hono` in `node_modules` break every `instanceof`-based match: deliberate 401/403 `HttpException`s collapse into 500s, DI and `@OnStart` misbehave with no error. Cause: a dependency (or stale lockfile) pinning its own copy; `hono`/`zod` are peers precisely so the app owns exactly one copy. Diagnose: `bun pm ls --all | grep hono` (or `grep @asenajs/asena`) — more than one entry is the bug, except the copy nested under `@asenajs/asena-cli` 0.11.0 (see the version matrix), which the app never loads. Fix: `rm -rf node_modules bun.lock && bun install`.
+- **Duplicate module copies** — the #1 silent killer. Two copies of `@asenajs/asena` or `hono` in `node_modules` break every `instanceof`-based match: deliberate 401/403 `HttpException`s collapse into 500s, DI and `@OnStart` misbehave with no error. Cause: a dependency (or stale lockfile) pinning its own copy; `hono`/`zod` are peers precisely so the app owns exactly one copy. Diagnose: `bun pm ls --all | grep hono` (or `grep @asenajs/asena`) — more than one entry is the bug. Fix: `rm -rf node_modules bun.lock && bun install`.
 - **tsconfig flags missing** — without `experimentalDecorators` + `emitDecoratorMetadata` components are silently not registered; the server boots with zero routes.
 - **Entry-file ordering** — a component declared below `AsenaServerFactory.create()` is not registered (warning logged).
 - **`globalMiddlewares` as a property** — silently ignored; must be a method.
