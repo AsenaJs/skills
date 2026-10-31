@@ -1,6 +1,6 @@
 # Middleware & Validation
 
-How to write Asena middleware, attach it at the four levels, use adapter built-ins, and validate requests with Zod validators (as of @asenajs/asena 0.11.x, ergenecore / hono-adapter 4.x).
+How to write Asena middleware, attach it at the four levels, use adapter built-ins, and validate requests with route context contracts or Zod validator classes (as of @asenajs/asena 0.12.x, ergenecore / hono-adapter 5.x).
 
 ## Contents
 
@@ -8,7 +8,9 @@ How to write Asena middleware, attach it at the four levels, use adapter built-i
 - Attachment levels
 - Stopping the chain
 - Adapter built-ins must be subclassed
+- Route context contracts
 - Validators
+- Schema factory caching (validatorCache)
 - Validation error handling
 
 ## Middleware class
@@ -44,7 +46,7 @@ Instead of returning a `Response` you may `throw new HttpException(401, 'Unautho
 
 ## Attachment levels
 
-Execution order: `globalMiddlewares()` (array order, pattern entries included) → controller `middlewares` → route `middlewares` → handler.
+Execution order, identical on both adapters: `globalMiddlewares()` (array order, pattern entries included) → controller `middlewares` → route `middlewares` → validation (contract or `validator`) → handler.
 
 ### 1. Global — a method on the @Config class
 
@@ -82,6 +84,8 @@ Pattern entries are not a separate stage — each runs at its array position, in
 @Controller({ path: '/admin', middlewares: [AuthMiddleware, AdminRoleMiddleware] })
 export class AdminController { /* applied to every route in the controller */ }
 ```
+
+Controller middleware is attached to each route the controller declares — not registered as a `/admin/*` pattern. It does not run for a 404 under the prefix, nor for an `OPTIONS` preflight of a route without an `OPTIONS` handler (put `CorsMiddleware` in `globalMiddlewares()`), nor for another controller whose path merely starts with the same prefix. The options form needs `path` — `@Controller({ middlewares })` without it throws; use `path: '/'` for root.
 
 ### 4. Route-level
 
@@ -128,6 +132,7 @@ export class ApiRateLimiter extends RateLimiterMiddleware {
       capacity: 100,          // 100 requests
       refillRate: 100 / 60,   // per minute
       message: 'Rate limit exceeded',
+      trustProxy: true,       // ONLY behind exactly one reverse proxy — omit when clients connect directly; see below
       keyGenerator: (ctx) => ctx.getValue('user')?.id || 'anonymous', // optional
       skip: (ctx) => ctx.getValue('user')?.role === 'admin',          // optional
       cost: (ctx) => (ctx.req.url.includes('/export') ? 10 : 1),      // optional
@@ -136,11 +141,94 @@ export class ApiRateLimiter extends RateLimiterMiddleware {
 }
 ```
 
-**Note (3.1+):** A disallowed CORS origin now gets a normal response without CORS headers (browser enforces the denial) — earlier versions answered `403 CORS: Origin not allowed`; never use CORS as access control. With any `origin` other than `'*'`, the middleware sets `Vary: Origin`.
+A disallowed CORS origin gets a normal response without CORS headers (the browser enforces the denial) — never use CORS as access control. With any `origin` other than `'*'`, the middleware sets `Vary: Origin`.
+
+### Rate limiter client key (adapters 5.0+)
+
+The default key is the **connecting peer** (`getRequestIp()`); `X-Forwarded-For` is ignored and `CF-Connecting-IP` is never read, so a client cannot mint a fresh bucket by forging a header.
+
+| `trustProxy` | Client key |
+|---|---|
+| `false` (default) | The connecting peer |
+| `true` | Rightmost `X-Forwarded-For` entry — one proxy layer, or a unix-socket listener |
+| `string[]` | Walk `X-Forwarded-For` from the right; first address not in the list (IPv4 and IPv4-mapped forms both match) |
+| `(address) => boolean` | Same walk with a predicate (CIDR checks) |
+
+Both misconfigurations fail closed into **one shared bucket**: `true` behind two or more proxy layers (the outer proxy becomes the key — list every proxy instead), and a trusted peer that sends no usable `X-Forwarded-For` (logged once). Behind a proxy with `trustProxy` unset, every client shares the proxy's bucket. `maxBuckets` (default `10000`, positive integer) caps distinct clients in memory; the least recently seen is evicted and starts over full. For Cloudflare's header, use a `keyGenerator`.
+
+### WebSocketOriginMiddleware
+
+`CorsMiddleware` is not a WebSocket origin policy — a disallowed origin still upgrades, and the browser sends cookies with a cross-site handshake. For cookie-authenticated sockets, subclass `WebSocketOriginMiddleware` (both adapters) and list it **before** the auth middleware:
+
+```typescript
+import { Middleware, WebSocket } from '@asenajs/asena/decorators';
+import { WebSocketOriginMiddleware } from '@asenajs/ergenecore'; // or '@asenajs/hono-adapter'
+
+@Middleware()
+export class ChatOrigin extends WebSocketOriginMiddleware {
+  constructor() {
+    super({ allowedOrigins: ['https://app.example.com'] }); // or (origin) => origin.endsWith('.example.com')
+  }
+}
+
+@WebSocket({ path: 'chat', middlewares: [ChatOrigin, SessionAuth] })
+export class ChatSocket extends AsenaWebSocketService<ChatData> { /* ... */ }
+```
+
+A non-allowed `Origin` gets **403**. `Origin` is compared exactly (scheme included, no trailing slash; no `'*'` value — use a predicate). A handshake without `Origin` is rejected unless `allowMissingOrigin: true` (non-browser clients). Don't put it on HTTP routes — it would reject every request without an `Origin`.
+
+## Route context contracts
+
+The recommended way to validate. `Context` from the adapter is a type **and** a value: `Context.define(schemaMap)` returns a context class to extend, and the handler takes it as its first parameter:
+
+```typescript
+import { Controller } from '@asenajs/asena/decorators';
+import { Post } from '@asenajs/asena/decorators/http';
+import { Context } from '@asenajs/ergenecore'; // hono: '@asenajs/hono-adapter' — value import, not `import type`
+import { z } from 'zod';
+
+export class CreateOrderContext extends Context.define({
+  body: z.object({ quantity: z.coerce.number().int().positive() }),
+  params: z.object({ shopId: z.coerce.number() }),
+}) {
+  get isBulk() {
+    return this.input.body.quantity > 100; // getters are fine when read from the handler
+  }
+}
+
+@Controller('/shops')
+export class OrderController {
+  @Post('/:shopId/orders')
+  async create(context: CreateOrderContext) {
+    const { shopId } = context.input.params;        // number
+    const { quantity } = await context.getBody();   // validated body output, typed without a generic
+    return context.send({ shopId, quantity, bulk: context.isBulk }, 201);
+  }
+}
+```
+
+| Key | Validates | Value handed to the schema |
+|---|---|---|
+| `body` | JSON body | Parsed JSON; `undefined` for an empty body |
+| `form` | multipart / URL-encoded body | Object; repeated field → array |
+| `query` | Query string | Object; repeated key → array, single stays a string |
+| `params` | Route params | Object of strings |
+| `headers` | Request headers | Object, lowercase names |
+
+- Any **Standard Schema v1** library works (Zod is one); sync and async validation both supported. `define()` rejects unknown keys, non-Standard-Schema values, and `body` + `form` together; a misspelled key is a compile error.
+- Order: `body`/`form` → `query` → `params` → `headers`; stops at the first failing target. Runs after the whole middleware chain on both adapters; a middleware that reads the body does not consume it.
+- `context.input.<target>` holds the schema **output** (defaults, transforms, coercions applied); only declared targets exist on it. `getBody()` / `getParseBody()` return the validated `body` / `form` output; `getQuery()`, `getParam()`, `headers` still return **raw** values — read `context.input` for typed ones.
+- `context.input` is per-request, frozen at top level (not deep-frozen), and **throws** when read before validation finished: in middleware, the constructor, or a field initializer.
+- The handler gets a real instance of your subclass (`instanceof` and getters work). A class from one adapter's `define()` fails the boot on the other adapter.
+- Errors: schema issues → **400**; malformed JSON → **400**; non-empty `body` whose content type is not `application/json`/`application/*+json` → **415**; `form` with another content type → **415**. Failures throw a `ValidationError` (`target` = contract key, `issues[].path` normalized to strings/numbers) that reaches `onError`; unhandled, the response is `{ "error": "Validation failed", "target": "body", "issues": [{ "message", "path" }] }`. An exception thrown *inside* a schema is not a validation failure — it reaches `onError` as thrown.
+- A route cannot combine a contract with `validator`, and `validatorCache` on a contract route fails startup.
+- **Requirements:** `experimentalDecorators` + `emitDecoratorMetadata`, and the class referenced as a **value** (same file, or imported without `import type`). Otherwise the route registers **without a contract** — nothing validated, `context.input` throws. Keep contracts next to their controller (e.g. `orders/CancelOrderContext.ts`).
+
+Contracts check request *shape*; whether the request makes sense (cancelling a paid order) is the service's decision.
 
 ## Validators
 
-Validators ARE middleware: `@Middleware({ validator: true })` on a class extending the adapter's `ValidationService`. Zod is a **peer dependency** (`bun add zod`); both adapters declare `zod: ^4.3.6` (they use the v4 top-level `flattenError` export).
+Use a validator class instead of a contract when the route needs a hook, a schema built from injected services, or `response()` schemas for OpenAPI. Validators ARE middleware: `@Middleware({ validator: true })` on a class extending the adapter's `ValidationService`. Zod is a **peer dependency** (`bun add zod`); both adapters declare `zod: ^4.3.6` (they use the v4 top-level `flattenError` export).
 
 ```typescript
 import { Middleware } from '@asenajs/asena/decorators';
@@ -159,7 +247,7 @@ export class CreateUserValidator extends ValidationService {
 }
 ```
 
-Attach via the route option — the validator runs before the handler; on failure the handler is never called:
+Attach via the route option — the validator runs after the route's middleware and before the handler; on failure the handler is never called:
 
 ```typescript
 @Post({ path: '/', validator: CreateUserValidator })
@@ -169,11 +257,11 @@ async create(context: Context) {
 }
 ```
 
-**Typed body:** on a validated route, `getBody()` returns the schema's parsed output, not the raw payload (adapters 3.1+; earlier versions return the raw body regardless) — so `z.object()`'s unknown-key stripping genuinely blocks mass assignment. **Body only:** `query()`/`param()`/`header()` schemas validate and reject, but `getQuery()`/`getParam()`/`headers` still return raw request strings — a `z.coerce.number()` on a query param validates, then hands you the string; convert in the handler.
+**Typed body:** on a validated route, `getBody()` returns the schema's parsed output, not the raw payload — so `z.object()`'s unknown-key stripping genuinely blocks mass assignment. **Body only:** `query()`/`param()`/`header()` schemas validate and reject, but `getQuery()`/`getParam()`/`headers` still return raw request strings — a `z.coerce.number()` on a query param validates, then hands you the string; convert in the handler (or use a contract, whose `context.input.query` is typed output).
 
 ### Schema methods
 
-Each returns a Zod schema or `{ schema, hook }`, and may be `async` (e.g. `@Inject` a repository for uniqueness `refine`s):
+Each returns a Zod schema or `{ schema, hook }`, and may be `async` (e.g. `@Inject` a repository for uniqueness `refine`s). They are schema **factories** — see `validatorCache` below for when they run:
 
 | Method | Validates | Runtime |
 |:-------|:----------|:--------|
@@ -208,13 +296,30 @@ Adapter differences:
 
 - Ergenecore runs the hook only on validation failure; hono on every attempt — always guard on `result.success`.
 - Ergenecore's hook receives Asena's `Context` (`setValue`/`send`); hono's receives Hono's **native** context (`set()`/`get()`/`json()`). Both write the same per-request store, so handlers read either with `getValue()`.
-- Order vs route middleware: ergenecore validates **after** the route's middleware chain, hono registers validators **before** it — state set by a route-level `AuthMiddleware` is not there yet on hono. Global middleware always runs first on both.
+- Order vs route middleware is the same on both: route middleware first, then the validator — state set by a route-level `AuthMiddleware` is already there. (hono-adapter below 5.0.0 validated before route middleware.)
+
+## Schema factory caching (validatorCache)
+
+`validatorCache` is a route option on every HTTP method decorator, both adapters:
+
+```typescript
+@Post({ path: '/', validator: CreateUserValidator, validatorCache: false })
+```
+
+| `validatorCache` | Factory (`json()`, `query()`, …) runs | Use when |
+|---|---|---|
+| `true` (default) | Once per route and target, at server start | The schema is fixed once the app is up |
+| `false` | On every request that reaches validation | The factory builds its schema from settings that change after startup |
+
+- Default mode awaits an `async` factory at startup; a factory that throws **fails the startup**, naming route and target. `@OnStart` hooks complete before routes initialize, so their state is visible either way.
+- Only the prepared schema and hook are cached — validation and the hook still run per request, and a `refine` reading mutable state reads it on every validation. Each route of each server instance prepares its own.
+- `validatorCache` on a route without a `validator`, or on a contract route, fails startup.
 
 ## Validation error handling
 
 A failed validation always throws a `ValidationError` carrying HTTP status 400.
 
-- **No `onError` handler** (or the handler returns nothing): both adapters answer with the flattened envelope `{ "error": "Validation failed", "details": { "formErrors": [], "fieldErrors": {...} }, "target": "json" }` — `target` names the failed part: `json` | `query` | `form` | `param` | `header`.
+- **No `onError` handler** (or the handler returns nothing): for a validator class, both adapters answer with the flattened envelope `{ "error": "Validation failed", "details": { "formErrors": [], "fieldErrors": {...} }, "target": "json" }` — `target` names the failed part: `json` | `query` | `form` | `param` | `header`. A contract failure has no `details` and uses the contract key as `target` (`body` | `form` | `query` | `params` | `headers`) — see Route context contracts.
 - **`onError` defined** on your `@Config` class: the `ValidationError` arrives there like any other error. Match with `isValidationError()`:
 
 ```typescript

@@ -1,6 +1,6 @@
 # AsenaJS Dependency Injection & Lifecycle
 
-Field-based IoC wiring (`@Inject`/`@Value`/`@Strategy`), registering package components with `imports`, component scopes, `@OnStart`/`@OnStop` ordering and failure policy, inheritance rules, and `@PostProcessor` — as of `@asenajs/asena` 0.11.x.
+Field-based IoC wiring (`@Inject`/`@Value`/`@Strategy`), registering package components with `imports`, component scopes, `@OnStart`/`@OnStop` ordering and failure policy, inheritance rules, and `@PostProcessor` — as of `@asenajs/asena` 0.12.x.
 
 ## Contents
 

@@ -1,6 +1,6 @@
 # OpenAPI
 
-Automatic OpenAPI 3.1 spec generation (`@asenajs/asena-openapi`) from existing validators — zero extra annotations.
+Automatic OpenAPI 3.1 spec generation (`@asenajs/asena-openapi` 3.2.x) from existing validators and route context contracts — zero extra annotations.
 
 ## Install & Quickstart
 
@@ -8,7 +8,7 @@ Automatic OpenAPI 3.1 spec generation (`@asenajs/asena-openapi`) from existing v
 bun add @asenajs/asena-openapi
 ```
 
-Requires Bun >= 1.4.0, `@asenajs/asena` `^0.11.0`, zod `^4.3.6`. Zero runtime dependencies (peers: asena, reflect-metadata, zod).
+Requires Bun >= 1.4.0, `@asenajs/asena` `^0.12.0`, zod `^4.3.6`. Zero runtime dependencies (peers: asena, reflect-metadata, zod).
 
 ```typescript
 import { OpenApi, OpenApiPostProcessor } from '@asenajs/asena-openapi';
@@ -51,6 +51,37 @@ export class CreateUserValidator extends ValidationService {
 }
 ```
 
+## Route Context Contract → Spec Mapping
+
+A route whose first parameter is a `Context.define()` subclass is documented from the contract — no validator class needed:
+
+| Contract key | OpenAPI output | Location |
+|---|---|---|
+| `body` | RequestBody (required) | `application/json` |
+| `form` | RequestBody (required) | `multipart/form-data` |
+| `query` | ParameterObject[] | `in: query` |
+| `params` | ParameterObject[] | `in: path` |
+| `headers` | ParameterObject[] | `in: header` |
+
+```typescript
+import { Context } from '@asenajs/ergenecore'; // or '@asenajs/hono-adapter'
+import { z } from 'zod';
+
+class ListOrdersContext extends Context.define({
+  query: z.object({ page: z.coerce.number().int().default(1) }),
+  params: z.object({ shopId: z.string() }),
+}) {}
+
+@Get('/:shopId/orders')
+async list(context: ListOrdersContext) { /* ... */ }
+```
+
+Contracts carry no response schemas — for documented responses use a validator class with `response()`.
+
+**Input vs output shape:** request schemas (contract targets and the validator's `json()`/`form()`/`query()`/`param()`/`header()`) are documented in their **input** shape — what the client sends; `response()` schemas use the **output** shape. So `.default()` makes a field optional in a request but required in a response, and `z.string().pipe(z.coerce.number())` is a `string` in a request, a `number` in a response. A `.transform()` output has no JSON Schema and becomes `{}`.
+
+**Contracts must convert:** when a contract target cannot be converted to JSON Schema, or a `query`/`params`/`headers` schema is not an object with properties, spec generation **fails** naming the route and target (no partial spec is cached). Contracts may use any Standard Schema library at runtime, but OpenAPI needs a converter for it — `ZodSchemaConverter` covers Zod.
+
 ## @Hidden
 
 Exclude routes from the spec at class or method level:
@@ -79,6 +110,26 @@ export class ApiController {
 | `ui` | `boolean \| 'swagger' \| 'scalar' \| { provider, configuration? }` | — | Docs UI at `{path}/ui`. `true` / `'swagger'` = Swagger UI (`swagger-ui-dist@5`, unpkg); `'scalar'` = Scalar API Reference (`@scalar/api-reference@1`, jsdelivr). Object form passes `configuration` straight into `SwaggerUIBundle` / `Scalar.createApiReference`; its keys override the defaults, `url` included. Unknown provider → error at boot |
 | `servers` | `ServerObject[]` | — | e.g. `[{ url: 'https://api.example.com', description: 'Production' }]` |
 | `converters` | `SchemaConverter[]` | `[ZodSchemaConverter]` | Pluggable — implement `SchemaConverter` for custom schema types |
+
+### Custom converters
+
+The first converter whose `canConvert()` returns `true` handles a schema. Keep `ZodSchemaConverter` in the list when adding one:
+
+```typescript
+import type { JsonSchema, SchemaConverter, SchemaDirection } from '@asenajs/asena-openapi';
+
+export class MySchemaConverter implements SchemaConverter {
+  canConvert(schema: unknown, direction?: SchemaDirection): boolean {
+    return isMySchema(schema);
+  }
+
+  convert(schema: unknown, direction: SchemaDirection = 'output', options?: { strict?: boolean }): JsonSchema | undefined {
+    return toJsonSchema(schema, direction);
+  }
+}
+```
+
+`direction` is `'input'` for request schemas, `'output'` for responses. `options.strict` is `true` for contracts: throw or return `undefined` rather than approximate — either fails spec generation with the route and target named.
 
 **Warning:** both UIs load from a CDN — they need internet access. In air-gapped production, leave `ui` unset and use an external docs tool.
 

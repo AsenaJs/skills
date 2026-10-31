@@ -1,6 +1,6 @@
 # Testing
 
-Testing utilities for AsenaJS (as of `@asenajs/asena` 0.11.x): unit-level dependency mocking plus two integration harnesses, all exported from `@asenajs/asena/test`, built exclusively for Bun's test runner.
+Testing utilities for AsenaJS (as of `@asenajs/asena` 0.12.x): unit-level dependency mocking plus two integration harnesses, all exported from `@asenajs/asena/test`, built exclusively for Bun's test runner.
 
 ## Contents
 

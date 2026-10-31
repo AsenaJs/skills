@@ -21,7 +21,7 @@ Or copy `skills/asena/` into your project's skill directory (e.g. `.claude/skill
 - Only the **published** npm API — the version matrix is at the top of [SKILL.md](skills/asena/SKILL.md).
 - Distilled from the official docs at [asena.sh](https://asena.sh); the full docs remain reachable per page via `https://asena.sh/raw/<path>.md` (see `references/docs-map.md`).
 
-**Synced with asena.sh docs as of 2026-08-27, @asenajs/asena 0.11.0.** Adapters 4.0.0, asena-cli 0.11.0, asena-drizzle 4.0.0, asena-redis 4.0.0, asena-kafka 4.0.0, asena-otel 3.0.0, asena-openapi 3.1.0, asena-logger 3.0.0 — every package requires core `^0.11.0` and Bun >= 1.4.0; the full matrix is at the top of [SKILL.md](skills/asena/SKILL.md).
+**Synced with asena.sh docs as of 2026-10-31, @asenajs/asena 0.12.1.** ergenecore 5.0.1, hono-adapter 5.0.2, asena-openapi 3.2.0 (these three require core `^0.12.0`); asena-drizzle 4.0.1, asena-redis 4.0.1, asena-kafka 4.0.1, asena-otel 3.0.1, asena-logger 3.0.1 (core `^0.11.0 || ^0.12.0`); asena-cli 0.11.0 — every package requires Bun >= 1.4.0; the full matrix is at the top of [SKILL.md](skills/asena/SKILL.md).
 
 ## Maintenance (release checklist)
 

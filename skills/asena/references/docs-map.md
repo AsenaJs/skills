@@ -6,11 +6,19 @@ Index of the full official documentation. Fetch any page as raw markdown from it
 
 | Page | URL | Covers |
 |---|---|---|
-| Get Started | https://asena.sh/raw/get-started.md | Install, TypeScript decorator config, first controller and service |
-| Examples | https://asena.sh/raw/examples.md | Complete worked examples: REST APIs, WebSocket chat, auth, database |
 | Philosophy | https://asena.sh/raw/philosophy.md | Design principles and deliberate trade-offs |
-| Roadmap | https://asena.sh/raw/roadmap.md | Completed, active, and planned features |
+| Get Started | https://asena.sh/raw/get-started.md | Install, TypeScript decorator config, first controller and service |
+| Key Concepts | https://asena.sh/raw/key-concepts.md | Container and component scan, field injection, scopes, bootstrap order, adapters, request context |
+| Best Practices | https://asena.sh/raw/best-practices.md | Project layout, thin controllers, repository ownership, route contracts, testing levels, common traps |
+| Examples | https://asena.sh/raw/examples.md | Complete worked examples: REST APIs, WebSocket chat, auth, database |
 | Showcase | https://asena.sh/raw/showcase.md | Production applications built with Asena |
+| Roadmap | https://asena.sh/raw/roadmap.md | Completed, active, and planned features |
+
+## Migrate
+
+| Page | URL | Covers |
+|---|---|---|
+| Coming from NestJS | https://asena.sh/raw/migrate/from-nestjs.md | NestJS concepts mapped to Asena: modules, injection, guards, pipes, interceptors, filters, config, testing, WebSockets, microservices |
 
 ## Concepts
 
@@ -22,7 +30,7 @@ Index of the full official documentation. Fetch any page as raw markdown from it
 | Component Lifecycle | https://asena.sh/raw/concepts/lifecycle.md | @OnStart/@OnStop, shutdown ordering, signals, health probes |
 | Middleware | https://asena.sh/raw/concepts/middleware.md | Global, pattern-based, controller- and route-level middleware |
 | Context API | https://asena.sh/raw/concepts/context.md | Unified request/response handling across adapters |
-| Validation | https://asena.sh/raw/concepts/validation.md | Type-safe request validation with Zod |
+| Validation | https://asena.sh/raw/concepts/validation.md | Route context contracts (Context.define), validator classes, validatorCache, error shapes |
 | Static Files | https://asena.sh/raw/concepts/static-files.md | @StaticServe, lifecycle hooks, path configuration |
 | WebSocket | https://asena.sh/raw/concepts/websocket.md | Real-time namespaces, rooms, typed socket data |
 | Event System | https://asena.sh/raw/concepts/event-system.md | In-process fire-and-forget events, wildcard matching |
@@ -47,7 +55,7 @@ Index of the full official documentation. Fetch any page as raw markdown from it
 |---|---|---|
 | AsenaLogger | https://asena.sh/raw/packages/logger.md | Winston-based logging, transports (console, file, Loki), profiling |
 | Asena Drizzle | https://asena.sh/raw/packages/drizzle.md | Type-safe database integration, Repository pattern |
-| Asena OpenAPI | https://asena.sh/raw/packages/openapi.md | OpenAPI 3.1 generation from validators, Swagger UI or Scalar API Reference |
+| Asena OpenAPI | https://asena.sh/raw/packages/openapi.md | OpenAPI 3.1 generation from validators and route contracts, custom converters, Swagger UI or Scalar API Reference |
 | Asena OpenTelemetry | https://asena.sh/raw/packages/opentelemetry.md | HTTP tracing, auto-tracing, metrics, distributed tracing |
 | Asena Redis | https://asena.sh/raw/packages/redis.md | @Redis client, caching decorators, multi-pod WS transport, Streams microservice transport |
 | Asena Kafka | https://asena.sh/raw/packages/kafka.md | Produce/consume client and Kafka microservice transport |

@@ -1,7 +1,7 @@
 ---
 name: asena
-description: Expert guidance for building AsenaJS applications - the IoC web framework for the Bun runtime with Spring Boot-style decorators and field-based dependency injection. Use when creating or modifying AsenaJS projects or any code importing @asenajs packages - HTTP controllers and routing, services, middleware, Zod validation, WebSocket namespaces, microservices over Redis Streams or Kafka, Redis caching, in-process events, scheduled cron tasks, static files, Drizzle ORM repositories, OpenAPI generation, OpenTelemetry tracing, testing with mockComponent/createTestApp/createWebTest, or the asena CLI. Covers @asenajs/asena, @asenajs/ergenecore, @asenajs/hono-adapter and all official packages. Triggers - asena, asenajs, AsenaServerFactory, createErgenecoreAdapter, createHonoAdapter, ergenecore, hono-adapter, @Controller, @Service, @Inject, @Value, @OnStart, @WebSocket, @MessagePattern, @StaticServe, @FrontendController, AsenaLogger, ulak, asena-config, asena doctor.
-version: 0.2.1
+description: Expert guidance for building AsenaJS applications - the IoC web framework for the Bun runtime with Spring Boot-style decorators and field-based dependency injection. Use when creating or modifying AsenaJS projects or any code importing @asenajs packages - HTTP controllers and routing, services, middleware, request validation with route context contracts (Context.define) or Zod validators, WebSocket namespaces, microservices over Redis Streams or Kafka, Redis caching, in-process events, scheduled cron tasks, static files, Drizzle ORM repositories, OpenAPI generation, OpenTelemetry tracing, testing with mockComponent/createTestApp/createWebTest, or the asena CLI. Covers @asenajs/asena, @asenajs/ergenecore, @asenajs/hono-adapter and all official packages. Triggers - asena, asenajs, Context.define, AsenaServerFactory, createErgenecoreAdapter, createHonoAdapter, ergenecore, hono-adapter, @Controller, @Service, @Inject, @Value, @OnStart, @Protected, @WebSocket, @MessagePattern, @StaticServe, @FrontendController, AsenaLogger, ulak, asena-config, asena doctor.
+version: 0.3.0
 license: MIT
 ---
 
@@ -11,22 +11,22 @@ AsenaJS is a decorator-based IoC web framework that runs ONLY on Bun. It looks l
 
 ## Version matrix
 
-Package versions are NOT aligned — do not assume one version number across packages. As of this skill's sync (2026-08-27, the 0.11 release plus asena-openapi 3.1.0). If an installed package resolves lower than the table shows, the behaviour this file describes for it may not apply — check before relying on it.
+Package versions are NOT aligned — do not assume one version number across packages. As of this skill's sync (2026-10-31, the 0.12 release). If an installed package resolves lower than the table shows, the behaviour this file describes for it may not apply — check before relying on it.
 
 | Package | npm | Version | Peer deps |
 |---|---|---|---|
-| Core framework | `@asenajs/asena` | 0.11.0 | — (`reflect-metadata` only runtime dep) |
+| Core framework | `@asenajs/asena` | 0.12.1 | — (`reflect-metadata` only runtime dep) |
 | CLI | `@asenajs/asena-cli` | 0.11.0 | — (depends on `@asenajs/asena` `^0.11.0` directly) |
-| Hono adapter | `@asenajs/hono-adapter` | 4.0.0 | `hono`, `zod` |
-| Ergenecore adapter (native Bun) | `@asenajs/ergenecore` | 4.0.0 | `zod` |
-| Redis (cache + transports) | `@asenajs/asena-redis` | 4.0.0 | `redis` |
-| Kafka (client + transport) | `@asenajs/asena-kafka` | 4.0.0 | `kafkajs` |
-| OpenAPI | `@asenajs/asena-openapi` | 3.1.0 | `zod` |
-| OpenTelemetry | `@asenajs/asena-otel` | 3.0.0 | `@opentelemetry/*` SDK family |
-| Drizzle ORM | `@asenajs/asena-drizzle` | 4.0.0 | `drizzle-orm` (+ `pg` or `mysql2` per driver) |
-| Logger | `@asenajs/asena-logger` | 3.0.0 | — |
+| Hono adapter | `@asenajs/hono-adapter` | 5.0.2 | `hono`, `zod`, core `^0.12.0` |
+| Ergenecore adapter (native Bun) | `@asenajs/ergenecore` | 5.0.1 | `zod`, core `^0.12.0` |
+| Redis (cache + transports) | `@asenajs/asena-redis` | 4.0.1 | `redis` |
+| Kafka (client + transport) | `@asenajs/asena-kafka` | 4.0.1 | `kafkajs` |
+| OpenAPI | `@asenajs/asena-openapi` | 3.2.0 | `zod`, core `^0.12.0` |
+| OpenTelemetry | `@asenajs/asena-otel` | 3.0.1 | `@opentelemetry/*` SDK family |
+| Drizzle ORM | `@asenajs/asena-drizzle` | 4.0.1 | `drizzle-orm` (+ `pg` or `mysql2` per driver) |
+| Logger | `@asenajs/asena-logger` | 3.0.1 | — |
 
-Every adapter and add-on package peers `@asenajs/asena` `^0.11.0`; `reflect-metadata` comes in through core. Every package requires **Bun >= 1.4.0**. There is no Node.js support — both adapters bind to `Bun.serve()`.
+Both adapters and `asena-openapi` peer `@asenajs/asena` `^0.12.0`; the other add-ons (redis, kafka, otel, drizzle, logger) peer `^0.11.0 || ^0.12.0`. `reflect-metadata` comes in through core. The CLI 0.11.0 still pins its own `@asenajs/asena` `^0.11.0`, so a 0.12 project gets a second, nested core copy under the CLI — that copy is the CLI's, never import it from app code. Every package requires **Bun >= 1.4.0**. There is no Node.js support — both adapters bind to `Bun.serve()`.
 
 Run `asena doctor` in an existing project to see the installed versions and whether any peer range is unsatisfied.
 
@@ -101,7 +101,7 @@ Rules:
 
 ## Import cheatsheet
 
-All **core** decorators come from `@asenajs/asena` subpaths. Only the `Context` type, the middleware/validator/config base classes, and adapter built-ins come from the adapter package (`@asenajs/ergenecore` or `@asenajs/hono-adapter`). Add-on packages export their own decorators: `@Database`/`@Repository`/`@Drizzle`/`@Transaction` (`@asenajs/asena-drizzle`), `@Redis`/`@RedisCache` (`@asenajs/asena-redis`), `@Kafka` (`@asenajs/asena-kafka`), `@Otel` (`@asenajs/asena-otel`), `@Hidden` (`@asenajs/asena-openapi`).
+All **core** decorators come from `@asenajs/asena` subpaths. Only `Context` (type, and the `Context.define()` value), the middleware/validator/config base classes, and adapter built-ins come from the adapter package (`@asenajs/ergenecore` or `@asenajs/hono-adapter`). Add-on packages export their own decorators: `@Database`/`@Repository`/`@Drizzle`/`@Transaction` (`@asenajs/asena-drizzle`), `@Redis`/`@RedisCache` (`@asenajs/asena-redis`), `@Kafka` (`@asenajs/asena-kafka`), `@Otel` (`@asenajs/asena-otel`), `@Hidden` (`@asenajs/asena-openapi`).
 
 | Import from | Symbols |
 |---|---|
@@ -110,6 +110,7 @@ All **core** decorators come from `@asenajs/asena` subpaths. Only the `Context` 
 | `@asenajs/asena/decorators/http` | `Get`, `Post`, `Put`, `Patch`, `Delete`, `Head`, `Options`, `All`, `Route`, `Page` |
 | `@asenajs/asena/decorators/ioc` | `Inject`, `Value`, `Strategy`, `Implements`, `OnStart`, `OnStop`, `Component`, `Scope` |
 | `@asenajs/asena/adapter` | `HttpException`, `isHttpException`, `isValidationError`, adapter SPI types |
+| `@asenajs/asena/auth` | Auth **contract** only: `AsenaAuthProvider`, `AuthUser`, `AuthSession`, `Protected`, `Public`, `Roles`, `getAuthSession`, `requireAuthSession` (core never enforces the markers — see pitfalls) |
 | `@asenajs/asena/web-socket` | `AsenaWebSocketService`, `Socket` (type; alias of `AsenaSocket`) |
 | `@asenajs/asena/microservice` | `MessagePattern`, `EventPattern`, `InMemoryTransport`, transport SPI |
 | `@asenajs/asena/messaging` | `ulak`, `Ulak`, `UlakError`, `UlakErrorCode` |
@@ -121,7 +122,7 @@ All **core** decorators come from `@asenajs/asena` subpaths. Only the `Context` 
 | `@asenajs/asena/middleware` | `AsenaMiddlewareService`, `AsenaValidationService` (framework base abstractions — app code normally extends the ADAPTER's classes instead) |
 | `@asenajs/asena/logger` | `ServerLogger` (interface) |
 | `@asenajs/asena/ioc/types` | `ICoreServiceNames`, `ComponentPostProcessor`, decorator param types |
-| adapter package | `Context` (type), `MiddlewareService`, `ValidationService`, `ConfigService`, built-in middlewares (`CorsMiddleware`, …) |
+| adapter package | `Context` (type and value — `Context.define()`), `MiddlewareService`, `ValidationService`, `ConfigService`, built-in middlewares (`CorsMiddleware`, `RateLimiterMiddleware`, `WebSocketOriginMiddleware`, …) |
 
 **Never** import `Controller`/`Get`/`Inject` from the adapter package, and never import `Context` from the core package.
 
@@ -182,7 +183,7 @@ Asena promotes a strict layered architecture: `Request → Controller → Servic
 - **Controllers stay thin** — parse the request, call a service, shape the response. **Never** put business logic, direct repository/database access, or multi-service orchestration in a controller.
 - **A repository belongs to exactly one domain service.** Inject `OrderRepository` only into `OrderService`. **Never** inject a repository into another domain's service or into a controller — that bypasses the owning domain's rules and couples the caller to the schema.
 - **Cross-domain access goes through the owning service.** When `InvoiceService` needs order data, inject `OrderService`, not `OrderRepository`. If two services would end up needing each other, extract the shared logic into a third service, or decouple the reaction with an in-process event (`@On`).
-- **Services own the business invariants.** Stock checks, state transitions, ownership rules live in the service — not in the controller and not in the repository. Validators (`ValidationService`) check request *shape*; services check *meaning*.
+- **Services own the business invariants.** Stock checks, state transitions, ownership rules live in the service — not in the controller and not in the repository. Route context contracts and validators check request *shape*; services check *meaning*.
 - **Write object-oriented code.** Model a domain as a service with intention-revealing methods (`reserveStock()`, `cancelOrder()`), not a data bag mutated from outside. Keep layer types where they belong: only controllers touch `Context`; repositories return domain data, never HTTP concerns.
 - **Match the project's existing layout.** The CLI scaffolds type-based folders (`src/controllers/`, `src/services/`, …); follow whatever structure the project already uses instead of inventing a new one. If the existing code deliberately violates a boundary above, flag it to the user — don't silently rewrite it, and don't copy the violation into new code.
 
@@ -206,9 +207,37 @@ export class AuthMiddleware extends MiddlewareService {
 Four attachment levels: global (returned from `globalMiddlewares()` in the `@Config` class), pattern-based include/exclude, controller-level (`@Controller({ path, middlewares: [...] })`), route-level (`@Get({ path, middlewares: [...] })`).
 
 - `globalMiddlewares()` **must be a method** on the `@Config` class. As a property it is silently ignored.
+- Controller-level middleware runs only on the routes that controller declares — not on 404s under its prefix and not on `OPTIONS` preflight. Put `CorsMiddleware` in `globalMiddlewares()`.
 - Adapter built-ins (`CorsMiddleware`, `RateLimiterMiddleware`, …) must be subclassed with `@Middleware()` before use — never list them directly: `@Middleware() export class GlobalCors extends CorsMiddleware {}`.
 
-Validators are middleware with `{ validator: true }`, returning a Zod schema from `json()`:
+Per-route pipeline, identical on both adapters: global → controller → route middleware → validation → handler.
+
+**Validate with a route context contract** (recommended) — a context subclass built with the adapter's `Context.define()`, taken as the handler's first parameter. The handler reads typed, validated values from `context.input`:
+
+```typescript
+import { Controller } from '@asenajs/asena/decorators';
+import { Post } from '@asenajs/asena/decorators/http';
+import { Context } from '@asenajs/ergenecore'; // a VALUE import — never `import type` here
+import { z } from 'zod';
+
+export class CreateUserContext extends Context.define({
+  body: z.object({ name: z.string().min(1), email: z.email() }),
+  query: z.object({ notify: z.stringbool().default(false) }),
+}) {}
+
+@Controller('/users')
+export class UserController {
+  @Post('/')
+  async create(context: CreateUserContext) {
+    const { name, email } = context.input.body; // typed schema output
+    return context.send({ name, email, notify: context.input.query.notify }, 201);
+  }
+}
+```
+
+Targets: `body` | `form` | `query` | `params` | `headers`; any Standard Schema v1 library works. A contract class imported with `import type` (or a missing `emitDecoratorMetadata`) registers the route with **no validation** — see pitfalls.
+
+**Validator classes** remain for hooks, schemas built from injected services, or `validatorCache`. They are middleware with `{ validator: true }`, returning a Zod schema from `json()`:
 
 ```typescript
 import { Middleware } from '@asenajs/asena/decorators';
@@ -223,7 +252,7 @@ export class CreateUserValidator extends ValidationService {
 }
 ```
 
-Attach via the route option: `@Post({ path: '/', validator: CreateUserValidator })`. Once an `onError` handler exists, validation failures reach it as `ValidationError` — match with `isValidationError()`.
+Attach via the route option: `@Post({ path: '/', validator: CreateUserValidator })`. A route uses a contract **or** a `validator`, never both (boot fails). Validator schema factories (`json()`, …) run **once per route at startup** by default; set `validatorCache: false` on the route when a factory must rebuild its schema per request. Once an `onError` handler exists, validation failures from either style reach it as `ValidationError` — match with `isValidationError()`.
 
 ## Server config and errors
 
@@ -305,6 +334,12 @@ Output paths and class-name suffixes come from `asena-config.ts` — see `refere
 - **`ulak.send`/`ulak.emit` inside `@OnStart`** throws `NO_TRANSPORT` — the transport isn't connected yet; defer the first publish until after startup.
 - **`ws.publish()` excludes the sender** — send to the sender explicitly with `ws.send()`. Rooms are not enumerable — keep your own registry if you need a member list.
 - **Validation errors bypass your controller** — they surface in `onError` as `ValidationError` once a handler exists; match with `isValidationError()`, don't expect them in the route body.
+- **Contract class erased to a type** — `import type { CreateUserContext }` (or `emitDecoratorMetadata` off) leaves no runtime metadata: the route registers **without validation** and `context.input` throws. Import the contract class as a value; also never read `context.input` in middleware, the constructor or a field initializer — it exists only once validation finished.
+- **Auth markers are inert on their own** — `@Protected` / `@Public` / `@Roles` from `@asenajs/asena/auth` only record metadata; core never enforces them. Without an auth implementation that reads them, every route stays public. Don't treat the decorator as protection.
+- **Rate limiter behind a proxy** — since adapter 5.0.0 `RateLimiterMiddleware` keys on the connecting peer and ignores `X-Forwarded-For` unless `trustProxy` is set. Behind a reverse proxy, without `trustProxy` every client shares the proxy's one bucket.
+- **`CorsMiddleware` is not a WebSocket origin policy** — a disallowed origin still upgrades. Put `WebSocketOriginMiddleware` before any cookie-based auth in `@WebSocket({ middlewares })`.
+- **Validator factory reading request-time state** — with the default `validatorCache: true`, `json()`/`query()` run once at startup; state read inside the factory is frozen. Read mutable state in a `refine`/hook, or set `validatorCache: false`.
+- **Duplicate routes fail the boot** — `/x` and `/x/` for the same method (or two controllers resolving to the same canonical path) now throw at startup instead of one silently shadowing the other.
 - **Cross-adapter divergences were closed in adapter 4.0.0** — `getQuery` returns `undefined` for an absent key and `setResponseHeader` replaces on BOTH adapters, and both have `appendResponseHeader`. On an adapter `3.x` project the old split still applies (ergenecore `''` / hono `undefined`; hono's `setResponseHeader` appends), so check the installed version before relying on either. Prefer `?? default` over `|| default` for `getQuery`.
 - **The Redis cache decorators are silently inert** until a `@RedisCache` class extending `CachePostProcessor` exists in `src/` — methods still run, Redis is just never touched. `@Transaction` used to fail the same way; since asena-drizzle 3.1 it **fails the boot** instead (`@Transaction methods are not wrapped: ...`), which also fires when a transactional class sits inside a post-processor's dependency closure.
 - **A class in a PostProcessor's dependency closure is never post-processed** — Phase A constructs it before post-processing is active. Any decorator implemented by a processor silently stops applying to it. Keep processor dependencies minimal.
@@ -317,14 +352,14 @@ Read the reference before writing code in its area:
 |---|---|
 | Route params, cookies, streaming, static files, HTML pages | `references/controllers-and-context.md` |
 | `@Value`, `imports`, scopes, `@Strategy`, lifecycle, shutdown/signals, `server.resolve()`, inheritance, `@PostProcessor` | `references/dependency-injection-and-lifecycle.md` |
-| CORS, rate limiting, auth middleware, Zod validators | `references/middleware-and-validation.md` |
+| CORS, rate limiting, auth middleware, route context contracts, Zod validators, `validatorCache` | `references/middleware-and-validation.md` |
 | `@Config`, `HttpException`, shutdown, deployment | `references/configuration-and-errors.md` |
 | WebSocket namespaces, rooms, multi-pod, Ulak broker | `references/websocket-and-ulak.md` |
 | In-process events (`@On`), cron (`@Schedule`) | `references/events-and-scheduling.md` |
 | `@MessagePattern`, Redis Streams, Kafka (client + transport), headless services | `references/microservices.md` |
 | Drizzle repositories, transactions, Redis caching | `references/database-and-caching.md` |
 | Logging, OpenTelemetry tracing | `references/observability.md` |
-| OpenAPI generation, Swagger UI / Scalar docs page | `references/openapi.md` |
+| OpenAPI generation (validators or contracts), Swagger UI / Scalar docs page | `references/openapi.md` |
 | Unit/web/full-app tests | `references/testing.md` |
 | Scaffolding, generate, build config, suffixes, `asena doctor` | `references/cli.md` |
 | Adapter choice, built-in middleware, Hono migration | `references/adapters.md` |

@@ -22,7 +22,7 @@ bun add mysql2   # for type: 'mysql'
 # type: 'bun-sql' uses Bun's built-in SQL — no driver package
 ```
 
-Requires Bun >= 1.4.0, `@asenajs/asena` `^0.11.0`, `drizzle-orm` `^0.45.2`. SQLite is not yet supported.
+Requires Bun >= 1.4.0, `@asenajs/asena` `^0.11.0 || ^0.12.0`, `drizzle-orm` `^0.45.2`. SQLite is not yet supported.
 
 **Schema-export pattern** — aggregate all schemas into one default-export object; the generics below depend on it for inference:
 
@@ -259,7 +259,7 @@ bun add @asenajs/asena-redis          # Bun-native RedisClient (default adapter)
 bun add @asenajs/asena-redis redis    # only if using adapter: 'node-redis'
 ```
 
-Requires Bun >= 1.4.0, `@asenajs/asena` `^0.11.0`; the `redis` peer is `^5.12.1`. Zero runtime dependencies.
+Requires Bun >= 1.4.0, `@asenajs/asena` `^0.11.0 || ^0.12.0`; the `redis` peer is `^5.12.1`. Zero runtime dependencies.
 
 ```typescript
 import { Redis, AsenaRedisService } from '@asenajs/asena-redis';
