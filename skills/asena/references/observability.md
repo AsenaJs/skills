@@ -18,7 +18,7 @@ Logging with `@asenajs/asena-logger` and tracing/metrics with `@asenajs/asena-ot
 bun add @asenajs/asena-logger
 ```
 
-Winston-based; implements the `ServerLogger` shape. As published (3.0.0) it peers `@asenajs/asena` `^0.11.0`. Requires Bun >= 1.4.0.
+Winston-based; implements the `ServerLogger` shape. As published (3.0.1) it peers `@asenajs/asena` `^0.11.0 || ^0.12.0`. Requires Bun >= 1.4.0.
 
 **Standard pattern** — export one instance globally and import it everywhere:
 
@@ -83,7 +83,7 @@ bun add @asenajs/asena-otel @opentelemetry/api @opentelemetry/resources @opentel
 bun add @opentelemetry/exporter-trace-otlp-http @opentelemetry/exporter-metrics-otlp-http
 ```
 
-Requires Bun >= 1.4.0, `@asenajs/asena` `^0.11.0`. One runtime dependency (`@opentelemetry/context-async-hooks`); the rest are peers.
+Requires Bun >= 1.4.0, `@asenajs/asena` `^0.11.0 || ^0.12.0`. One runtime dependency (`@opentelemetry/context-async-hooks`); the rest are peers.
 
 Three steps — all three are required for HTTP tracing:
 

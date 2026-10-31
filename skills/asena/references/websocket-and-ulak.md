@@ -121,6 +121,8 @@ export class WsAuthMiddleware extends MiddlewareService {
 export class PrivateSocket extends AsenaWebSocketService<UserData> { /* ... */ }
 ```
 
+**Warning:** `CorsMiddleware` does not stop a cross-site handshake — a disallowed origin still upgrades, with the victim's cookies attached. For cookie-authenticated sockets, list a `WebSocketOriginMiddleware` subclass (both adapters, 5.0+) **first**: `middlewares: [ChatOrigin, SessionAuth]`. Options and example in `middleware-and-validation.md`.
+
 ## Pitfalls
 
 - **`ws.publish()` excludes the sender** (also `publishText`/`publishBinary`). If the sender must see the message, `ws.send(payload)` it explicitly, or use `this.to()`/`this.in()`, which include the sender. This rule does not change when a `transport()` is configured (before `@asenajs/asena` 0.10.1 it did — a transport silently echoed publishes back to the sender).

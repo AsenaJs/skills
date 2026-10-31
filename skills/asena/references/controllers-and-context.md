@@ -1,6 +1,6 @@
 # Controllers & Context
 
-How to define HTTP routes with decorators and handle requests/responses through Asena's unified Context API, plus static file serving and frontend HTML controllers (as of @asenajs/asena 0.11.x, ergenecore / hono-adapter 4.x).
+How to define HTTP routes with decorators and handle requests/responses through Asena's unified Context API, plus static file serving and frontend HTML controllers (as of @asenajs/asena 0.12.x, ergenecore / hono-adapter 5.x).
 
 ## Contents
 
@@ -56,7 +56,9 @@ export class UserController {
 | Property | Type | Required | Description |
 |:---------|:-----|:---------|:------------|
 | `path` | `string` | No — defaults to `/` (bare `@Controller()` is valid; the CLI scaffolds it) | Base path prefixed to every route |
-| `middlewares` | `Middleware[]` | No | Applied to all routes in the controller |
+| `middlewares` | `Middleware[]` | No | Applied to each route the controller declares (not to 404s under its prefix) |
+
+The options form requires `path` — `@Controller({ middlewares })` throws `"path" is required - use path: '/'`. Routes are compared by canonical path: `/x` and `/x/` for the same method, or `@Controller('/api')` + `@Get('/users')` next to `@Controller('/api/users')` + `@Get('/')`, **fail the boot** naming both handlers.
 
 ### Route decorators
 
@@ -73,7 +75,7 @@ async create(context: Context) { /* ... */ }
 
 `@Get` additionally accepts `staticServe: <StaticServeService subclass>` (see Static files below).
 
-Execution order: global middleware → controller middleware → route middleware → handler.
+Execution order (both adapters): global middleware → controller middleware → route middleware → validation (`validator` or route context contract) → handler. Prefer a contract over `validator` — see `middleware-and-validation.md`.
 
 **Warning:** `await` every Promise in handlers — an unawaited Promise that rejects shuts the server down.
 
@@ -119,6 +121,8 @@ async create(context: Context) {
 }
 ```
 
+The `getBody<T>()` generic is a cast — nothing checks the body against `T`. For validated, typed input declare a route context contract (`class CreateUserContext extends Context.define({ body: … }) {}` as the handler's parameter type): `getBody()` is then typed from the schema and the validated values are on `context.input`. See `middleware-and-validation.md`.
+
 **Warning:** Empty request body — ergenecore returns `{}`; hono may throw, so wrap `getBody()` in try/catch on hono.
 
 Other body readers: `getParseBody()` (auto-detects JSON/form-data/URL-encoded by Content-Type), `getFormData()`, `getArrayBuffer()`, `getBlob()`.
@@ -143,6 +147,7 @@ if (!file || !(file instanceof File)) return context.send({ error: 'No file' }, 
 | `getArrayBuffer()` | `Promise<ArrayBuffer>` |
 | `getBlob()` | `Promise<Blob>` |
 | `getRequestIp()` | `string \| null` (sync, lazy + cached) |
+| `input` | `Readonly<…>` — validated output of a route context contract; throws on a route without one |
 
 ## Responses
 

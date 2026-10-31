@@ -32,7 +32,7 @@ bun add @asenajs/ergenecore zod            # ergenecore
 bun add @asenajs/hono-adapter hono zod     # hono adapter
 ```
 
-`zod` (>= 4.3.6) and `hono` (>= 4.12.9) are **peer dependencies** — your project owns them. Never let two copies of `hono` resolve (breaks `HTTPException` matching); `asena doctor` checks for exactly this. Adapter `4.x` needs `@asenajs/asena` `^0.11.0` and Bun >= 1.4.0 — both adapters alike.
+`zod` (>= 4.3.6) and `hono` (>= 4.12.9) are **peer dependencies** — your project owns them. Never let two copies of `hono` resolve (breaks `HTTPException` matching); `asena doctor` checks for exactly this. Adapter `5.x` needs `@asenajs/asena` `^0.12.0` and Bun >= 1.4.0 — both adapters alike.
 
 ## Bootstrap & Factory Signatures
 
@@ -95,7 +95,7 @@ Both adapters export the same base-class surface; only the import path differs (
 
 | Export | Use |
 |---|---|
-| `type Context` | Handler/middleware context — always `import type`. Same `AsenaContext` API on both (`getParam` sync; `getQuery`/`getBody` async; `context.send(body, status?)`); `context.req` is a native `Request` on ergenecore, a `HonoRequest` on hono |
+| `Context` | Handler/middleware context — `import type` for plain annotations; a value import when calling `Context.define()` for a route context contract (`middleware-and-validation.md`). A contract class from one adapter fails the boot on the other. Same `AsenaContext` API on both (`getParam` sync; `getQuery`/`getBody` async; `context.send(body, status?)`); `context.req` is a native `Request` on ergenecore, a `HonoRequest` on hono |
 
 Since adapter `4.0.0` the context contract is genuinely identical — the three members that used to diverge no longer do:
 
@@ -106,6 +106,8 @@ Since adapter `4.0.0` the context contract is genuinely identical — the three 
 | `appendResponseHeader(k, v)` | Appends, keeping existing values (`Vary`, `Link`) — not for `Set-Cookie` | did not exist |
 
 `context.req`'s type is now the only real divergence. Never write code that depends on one adapter's old behaviour.
+
+Adapter `5.0.0` (core `^0.12.0`) added `Context.define()` contracts, `validatorCache`, and `WebSocketOriginMiddleware`, and aligned the request pipeline — global → controller → route middleware → validation → handler on both. Breaking: `RateLimiterMiddleware` keys on the connecting peer (see below).
 | `MiddlewareService` | Custom middleware base — implement `handle(context, next)` (its only abstract member) |
 | `ValidationService` | Zod validator base — define `json()`, `query()`, `param()`, etc.; register with `@Middleware({ validator: true })` |
 | `ConfigService` | `@Config()` base — override `globalMiddlewares()`, `onError()`, `onNotFound()`, `transport()` |
@@ -127,7 +129,7 @@ export class AuthMiddleware extends MiddlewareService {
 
 ## Built-in Middleware
 
-Both adapters ship `CorsMiddleware` and `RateLimiterMiddleware`. **Always subclass with `@Middleware()` before use** — the classes live in `node_modules`, and Asena only scans your source folder, so the raw class is never discovered. Attach subclasses via `globalMiddlewares()`, `@Controller('/p', { middlewares: [...] })`, or `@Get({ path, middlewares: [...] })`.
+Both adapters ship `CorsMiddleware`, `RateLimiterMiddleware` and `WebSocketOriginMiddleware`. **Always subclass with `@Middleware()` before use** — the classes live in `node_modules`, and Asena only scans your source folder, so the raw class is never discovered. Attach subclasses via `globalMiddlewares()`, `@Controller({ path: '/p', middlewares: [...] })`, or `@Get({ path, middlewares: [...] })`. `WebSocketOriginMiddleware` (WebSocket handshake origin policy) is covered in `middleware-and-validation.md`.
 
 ### CorsMiddleware
 
@@ -193,13 +195,17 @@ Each `X-RateLimit-*` header appears exactly once even when a global and a route 
 |---|---|---|
 | `capacity` | `number` | `100` |
 | `refillRate` | `number` (tokens/sec) | `10` |
-| `keyGenerator` | `(ctx) => string` | `x-forwarded-for` → `cf-connecting-ip` → `getRequestIp()` → `'unknown'` |
+| `keyGenerator` | `(ctx) => string` | Connecting peer (`getRequestIp() ?? 'unknown'`), or the client hop of `X-Forwarded-For` when `trustProxy` trusts the peer |
+| `trustProxy` | `boolean \| string[] \| (address) => boolean` | `false` — `X-Forwarded-For` ignored; `true` = one proxy layer / unix socket; list or predicate = walk from the right |
+| `maxBuckets` | `number` (positive integer) | `10000` — least recently seen client evicted at the cap |
 | `message` | `string` | `'Rate limit exceeded...'` |
 | `statusCode` | `number` | `429` |
 | `cost` | `number \| (ctx) => number` | `1` |
 | `skip` | `(ctx) => boolean` | `undefined` |
 | `cleanupInterval` | `number` (ms) | `60000` |
 | `bucketTTL` | `number` (ms) | `600000` |
+
+**Warning (5.0+):** behind a reverse proxy, leaving `trustProxy` unset puts every client in the proxy's one bucket; `true` behind two or more proxy layers does the same (the outer proxy becomes the key) — list every proxy or use a predicate. `CF-Connecting-IP` is no longer read; use a `keyGenerator` for it.
 
 Sets `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, and `Retry-After` (on 429). Its sweep timer is released via an inherited `@OnStop` on `server.stop()` — no cleanup code needed in subclasses.
 

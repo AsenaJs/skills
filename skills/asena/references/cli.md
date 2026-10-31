@@ -144,7 +144,7 @@ bun dist/index.asena.js   # run the production bundle
 
 - **Your entry file is never rewritten** and its module-level code does not run at build time. Earlier CLI versions parsed the `AsenaServerFactory.create({...})` call and injected a `components: [...]` array, which imposed invisible formatting rules on the entry.
 - **A hand-written `components: [...]` array is user-owned.** It is left untouched and, when non-empty, wins over the build's list. Delete it to let the build supply the components.
-- **Requires `@asenajs/asena` ^0.11.0** — the first core version that reads the build list. On an older core the bundle falls back to the filesystem scan and dies in production with `No components or configuration found`.
+- **Requires the app's `@asenajs/asena` >= 0.11.0** (0.12.x included) — 0.11.0 is the first core version that reads the build list. On an older core the bundle falls back to the filesystem scan and dies in production with `No components or configuration found`.
 - **`minify.identifiers` is forced to `false`** (and `minify: true` is narrowed to `{ whitespace, syntax, identifiers: false }`), logging `[build] minify.identifiers disabled: component names are read at runtime`.
 
 ## asena doctor
@@ -164,7 +164,7 @@ asena doctor --json   # the result array as JSON
 | `duplicate-packages` | `@asenajs/asena`, `hono`, `zod` each resolve to a single version under `node_modules` (incl. the `.bun` store) |
 | `peer-ranges` | Every installed `@asenajs/*` package's peer range for `@asenajs/asena` is satisfied by the installed core |
 
-Run it first when diagnosing the silent failures below — `duplicate-packages` in particular is the fastest way to rule the `instanceof`/`HttpException` trap in or out.
+Run it first when diagnosing the silent failures below — `duplicate-packages` in particular is the fastest way to rule the `instanceof`/`HttpException` trap in or out. Known false positive: on a core 0.12 project, CLI 0.11.0 brings its own `@asenajs/asena` 0.11.x under `node_modules/@asenajs/asena-cli/node_modules/`, which this check fails on although the app never loads it; only a second copy at any other path is the real trap.
 
 ## asena init
 
