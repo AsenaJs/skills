@@ -14,6 +14,7 @@ Testing utilities for AsenaJS (as of `@asenajs/asena` 0.12.x): unit-level depend
 - createTestApp known behaviours
 - Full CRUD example
 - WebSocket unit test
+- Auth: TestAuthProvider
 
 ## Choosing a level
 
@@ -408,3 +409,22 @@ describe('ChatSocket', () => {
 ```
 
 For handler-context stubs generally: mock only the `Context` methods the handler calls (`getParam`, `getBody`, `send`, `setValue`, …) and cast with `as unknown as Context`. Deeper detail: `https://asena.sh/raw/testing/examples.md`.
+
+## Auth: TestAuthProvider
+
+Routes guarded by `@asenajs/asena-auth` need a provider in the test app. `@asenajs/asena-auth/testing` ships one that turns a request header into a session — no login step:
+
+```typescript
+import { authComponents } from '@asenajs/asena-auth';
+import { TestAuth, TestAuthProvider } from '@asenajs/asena-auth/testing';
+
+@TestAuth({ users: { ada: { id: 'u1', roles: ['admin'] }, bob: { id: 'u2', roles: ['user'] } } })
+class AppTestAuth extends TestAuthProvider {}
+
+const { app } = await createWebTest({ adapter, controllers: [ProjectController], components: [...authComponents, AppTestAuth] });
+await app.get('/projects', { headers: { 'x-test-user': 'bob' } }).expectStatus(200);
+```
+
+- The `x-test-user` header (another name via `header`) names a key of `users`; a missing header or unknown key is no session — 401 on a protected route.
+- `createWebTest` has no `imports`, so the package components go into `components`; `createTestApp` takes `imports: [...authComponents]`.
+- Tests only — never register it in an application. Real-provider sessions, WebSocket upgrades and several providers: [auth.md](auth.md).

@@ -1,7 +1,7 @@
 ---
 name: asena
-description: Expert guidance for building AsenaJS applications - the IoC web framework for the Bun runtime with Spring Boot-style decorators and field-based dependency injection. Use when creating or modifying AsenaJS projects or any code importing @asenajs packages - HTTP controllers and routing, services, middleware, request validation with route context contracts (Context.define) or Zod validators, WebSocket namespaces, microservices over Redis Streams or Kafka, Redis caching, in-process events, scheduled cron tasks, static files, Drizzle ORM repositories, OpenAPI generation, OpenTelemetry tracing, testing with mockComponent/createTestApp/createWebTest, or the asena CLI. Covers @asenajs/asena, @asenajs/ergenecore, @asenajs/hono-adapter and all official packages. Triggers - asena, asenajs, Context.define, AsenaServerFactory, createErgenecoreAdapter, createHonoAdapter, ergenecore, hono-adapter, @Controller, @Service, @Inject, @Value, @OnStart, @Protected, @WebSocket, @MessagePattern, @StaticServe, @FrontendController, AsenaLogger, ulak, asena-config, asena doctor.
-version: 0.3.0
+description: Expert guidance for building AsenaJS applications - the Bun IoC web framework with Spring Boot-style decorators and field-based dependency injection. Use when creating or modifying AsenaJS projects or any code importing @asenajs packages - controllers and routing, services, middleware, validation (route context contracts, Zod validators), authentication and sessions, WebSocket namespaces, microservices over Redis Streams or Kafka, Redis caching, events, cron tasks, static files, Drizzle repositories, OpenAPI, OpenTelemetry, testing with mockComponent/createTestApp/createWebTest, or the asena CLI. Triggers - asena, asenajs, Context.define, AsenaServerFactory, createErgenecoreAdapter, createHonoAdapter, ergenecore, hono-adapter, asena-auth, @Controller, @Service, @Inject, @Value, @OnStart, @Protected, @Auth, @BetterAuth, AuthGuard, authComponents, requireAuthSession, @WebSocket, @MessagePattern, @StaticServe, @FrontendController, AsenaLogger, ulak, asena-config, asena doctor.
+version: 0.4.0
 license: MIT
 ---
 
@@ -11,14 +11,15 @@ AsenaJS is a decorator-based IoC web framework that runs ONLY on Bun. It looks l
 
 ## Version matrix
 
-Package versions are NOT aligned — do not assume one version number across packages. As of this skill's sync (2026-10-31, the 0.12 release). If an installed package resolves lower than the table shows, the behaviour this file describes for it may not apply — check before relying on it.
+Package versions are NOT aligned — do not assume one version number across packages. As of this skill's sync (2026-11-01, the asena-auth 1.0.0 release). If an installed package resolves lower than the table shows, the behaviour this file describes for it may not apply — check before relying on it.
 
 | Package | npm | Version | Peer deps |
 |---|---|---|---|
-| Core framework | `@asenajs/asena` | 0.12.1 | — (`reflect-metadata` only runtime dep) |
-| CLI | `@asenajs/asena-cli` | 0.11.0 | — (depends on `@asenajs/asena` `^0.11.0` directly) |
-| Hono adapter | `@asenajs/hono-adapter` | 5.0.2 | `hono`, `zod`, core `^0.12.0` |
-| Ergenecore adapter (native Bun) | `@asenajs/ergenecore` | 5.0.1 | `zod`, core `^0.12.0` |
+| Core framework | `@asenajs/asena` | 0.12.3 | — (`reflect-metadata` only runtime dep) |
+| CLI | `@asenajs/asena-cli` | 0.12.0 | — (no `@asenajs/asena` dependency; reads the project's own core) |
+| Hono adapter | `@asenajs/hono-adapter` | 5.0.3 | `hono`, `zod`, core `^0.12.0` |
+| Ergenecore adapter (native Bun) | `@asenajs/ergenecore` | 5.0.2 | `zod`, core `^0.12.0` |
+| Auth (sessions, Better Auth, route guards) | `@asenajs/asena-auth` | 1.0.0 | core `^0.12.2`; `better-auth` optional (Better Auth provider only) |
 | Redis (cache + transports) | `@asenajs/asena-redis` | 4.0.1 | `redis` |
 | Kafka (client + transport) | `@asenajs/asena-kafka` | 4.0.1 | `kafkajs` |
 | OpenAPI | `@asenajs/asena-openapi` | 3.2.0 | `zod`, core `^0.12.0` |
@@ -26,7 +27,7 @@ Package versions are NOT aligned — do not assume one version number across pac
 | Drizzle ORM | `@asenajs/asena-drizzle` | 4.0.1 | `drizzle-orm` (+ `pg` or `mysql2` per driver) |
 | Logger | `@asenajs/asena-logger` | 3.0.1 | — |
 
-Both adapters and `asena-openapi` peer `@asenajs/asena` `^0.12.0`; the other add-ons (redis, kafka, otel, drizzle, logger) peer `^0.11.0 || ^0.12.0`. `reflect-metadata` comes in through core. `asena-cli` 0.11.0 still depends on `@asenajs/asena` `^0.11.0`, so a 0.12 project with the CLI installed gets a second, nested copy at `node_modules/@asenajs/asena-cli/node_modules/@asenajs/asena` (0.11.x). It belongs to the CLI and app code never resolves it; `asena doctor`'s `duplicate-packages` check still reports it as a failure, and `bun update @asenajs/asena` does not remove it. Every package requires **Bun >= 1.4.0**. There is no Node.js support — both adapters bind to `Bun.serve()`.
+Both adapters and `asena-openapi` peer `@asenajs/asena` `^0.12.0`; `asena-auth` peers `^0.12.2` (its docs require core 0.12.3+ with ergenecore 5.0.2+ or hono-adapter 5.0.3+), is adapter-agnostic, and ships a `@asenajs/asena-auth/testing` subpath; the other add-ons (redis, kafka, otel, drizzle, logger) peer `^0.11.0 || ^0.12.0`. `reflect-metadata` comes in through core. `asena-cli` 0.11.0 depends on `@asenajs/asena` `^0.11.0` (0.11.1 and later have no core dependency): on a 0.12 project it nests a second copy at `node_modules/@asenajs/asena-cli/node_modules/@asenajs/asena` that app code never resolves but `asena doctor`'s `duplicate-packages` check reports — upgrade the CLI to remove it. Every package requires **Bun >= 1.4.0**. There is no Node.js support — both adapters bind to `Bun.serve()`.
 
 Run `asena doctor` in an existing project to see the installed versions and whether any peer range is unsatisfied.
 
@@ -101,7 +102,7 @@ Rules:
 
 ## Import cheatsheet
 
-All **core** decorators come from `@asenajs/asena` subpaths. Only `Context` (type, and the `Context.define()` value), the middleware/validator/config base classes, and adapter built-ins come from the adapter package (`@asenajs/ergenecore` or `@asenajs/hono-adapter`). Add-on packages export their own decorators: `@Database`/`@Repository`/`@Drizzle`/`@Transaction` (`@asenajs/asena-drizzle`), `@Redis`/`@RedisCache` (`@asenajs/asena-redis`), `@Kafka` (`@asenajs/asena-kafka`), `@Otel` (`@asenajs/asena-otel`), `@Hidden` (`@asenajs/asena-openapi`).
+All **core** decorators come from `@asenajs/asena` subpaths. Only `Context` (type, and the `Context.define()` value), the middleware/validator/config base classes, and adapter built-ins come from the adapter package (`@asenajs/ergenecore` or `@asenajs/hono-adapter`). Add-on packages export their own decorators: `@Database`/`@Repository`/`@Drizzle`/`@Transaction` (`@asenajs/asena-drizzle`), `@Redis`/`@RedisCache` (`@asenajs/asena-redis`), `@Kafka` (`@asenajs/asena-kafka`), `@Otel` (`@asenajs/asena-otel`), `@Hidden` (`@asenajs/asena-openapi`), `@Auth`/`@BetterAuth` (`@asenajs/asena-auth`).
 
 | Import from | Symbols |
 |---|---|
@@ -110,7 +111,7 @@ All **core** decorators come from `@asenajs/asena` subpaths. Only `Context` (typ
 | `@asenajs/asena/decorators/http` | `Get`, `Post`, `Put`, `Patch`, `Delete`, `Head`, `Options`, `All`, `Route`, `Page` |
 | `@asenajs/asena/decorators/ioc` | `Inject`, `Value`, `Strategy`, `Implements`, `OnStart`, `OnStop`, `Component`, `Scope` |
 | `@asenajs/asena/adapter` | `HttpException`, `isHttpException`, `isValidationError`, adapter SPI types |
-| `@asenajs/asena/auth` | Auth **contract** only: `AsenaAuthProvider`, `AuthUser`, `AuthSession`, `Protected`, `Public`, `Roles`, `getAuthSession`, `requireAuthSession` (core never enforces the markers — see pitfalls) |
+| `@asenajs/asena/auth` | Auth **contract** only: `AsenaAuthProvider`, `AuthUser`, `AuthSession`, `Protected`, `Public`, `Roles`, `getAuthSession`, `requireAuthSession` (core never enforces the markers — `@asenajs/asena-auth` does; see pitfalls and `references/auth.md`) |
 | `@asenajs/asena/web-socket` | `AsenaWebSocketService`, `Socket` (type; alias of `AsenaSocket`) |
 | `@asenajs/asena/microservice` | `MessagePattern`, `EventPattern`, `InMemoryTransport`, transport SPI |
 | `@asenajs/asena/messaging` | `ulak`, `Ulak`, `UlakError`, `UlakErrorCode` |
@@ -210,7 +211,7 @@ Four attachment levels: global (returned from `globalMiddlewares()` in the `@Con
 - Controller-level middleware runs only on the routes that controller declares — not on 404s under its prefix and not on `OPTIONS` preflight. Put `CorsMiddleware` in `globalMiddlewares()`.
 - Adapter built-ins (`CorsMiddleware`, `RateLimiterMiddleware`, …) must be subclassed with `@Middleware()` before use — never list them directly: `@Middleware() export class GlobalCors extends CorsMiddleware {}`.
 
-Per-route pipeline, identical on both adapters: global → controller → route middleware → validation → handler.
+Per-route pipeline, identical on both adapters: global → controller → route middleware → validation → handler. On a protected route the `@asenajs/asena-auth` guard runs between controller and route middleware.
 
 **Validate with a route context contract** (recommended) — a context subclass built with the adapter's `Context.define()`, taken as the handler's first parameter. The handler reads typed, validated values from `context.input`:
 
@@ -320,13 +321,13 @@ await app.get('/users').expectStatus(200).expectJson([{ id: '1' }]);
 | `asena generate controller\|service\|middleware\|validator\|config\|websocket` (`asena g c\|s\|m\|v\|config\|ws`) | Generate a component |
 | `asena build` | Production bundle → `dist/index.asena.js`. Does NOT rewrite your entry file; a hand-written `components:` array is yours and wins |
 | `asena init` | Create `asena-config.ts` |
-| `asena doctor` | Read-only project check (decorator flags, duplicate copies, peer ranges, minify settings); exit 1 on failure |
+| `asena doctor` | Read-only project check (decorator flags, duplicate copies, peer ranges, minify settings, auth wiring); exit 1 on failure |
 
 Output paths and class-name suffixes come from `asena-config.ts` — see `references/cli.md`.
 
 ## Critical pitfalls
 
-- **Duplicate module copies** — the #1 silent killer. Two copies of `@asenajs/asena` or `hono` in `node_modules` break every `instanceof`-based match: deliberate 401/403 `HttpException`s collapse into 500s, DI and `@OnStart` misbehave with no error. Cause: a dependency (or stale lockfile) pinning its own copy; `hono`/`zod` are peers precisely so the app owns exactly one copy. Diagnose: `bun pm ls --all | grep hono` (or `grep @asenajs/asena`) — more than one entry is the bug, except the copy nested under `@asenajs/asena-cli` 0.11.0 (see the version matrix), which the app never loads. Fix: `rm -rf node_modules bun.lock && bun install`.
+- **Duplicate module copies** — the #1 silent killer. Two copies of `@asenajs/asena` or `hono` in `node_modules` break every `instanceof`-based match: deliberate 401/403 `HttpException`s collapse into 500s, DI and `@OnStart` misbehave with no error. Cause: a dependency (or stale lockfile) pinning its own copy; `hono`/`zod` are peers precisely so the app owns exactly one copy. Diagnose: `bun pm ls --all | grep hono` (or `grep @asenajs/asena`) — more than one entry is the bug, except a copy nested under `@asenajs/asena-cli` 0.11.0 (see the version matrix), which the app never loads. Fix: `rm -rf node_modules bun.lock && bun install`.
 - **tsconfig flags missing** — without `experimentalDecorators` + `emitDecoratorMetadata` components are silently not registered; the server boots with zero routes.
 - **Entry-file ordering** — a component declared below `AsenaServerFactory.create()` is not registered (warning logged).
 - **`globalMiddlewares` as a property** — silently ignored; must be a method.
@@ -335,7 +336,7 @@ Output paths and class-name suffixes come from `asena-config.ts` — see `refere
 - **`ws.publish()` excludes the sender** — send to the sender explicitly with `ws.send()`. Rooms are not enumerable — keep your own registry if you need a member list.
 - **Validation errors bypass your controller** — they surface in `onError` as `ValidationError` once a handler exists; match with `isValidationError()`, don't expect them in the route body.
 - **Contract class erased to a type** — `import type { CreateUserContext }` (or `emitDecoratorMetadata` off) leaves no runtime metadata: the route registers **without validation** and `context.input` throws. Import the contract class as a value; also never read `context.input` in middleware, the constructor or a field initializer — it exists only once validation finished.
-- **Auth markers are inert on their own** — `@Protected` / `@Public` / `@Roles` from `@asenajs/asena/auth` only record metadata; core never enforces them. Without an auth implementation that reads them, every route stays public. Don't treat the decorator as protection.
+- **Auth markers are inert on their own** — `@Protected` / `@Public` / `@Roles` from `@asenajs/asena/auth` only record metadata; core never enforces them. Without an auth implementation that reads them, every route stays public. Don't treat the decorator as protection. Fix: install `@asenajs/asena-auth`, register a provider (`@Auth` or `@BetterAuth`) and pass `imports: [...authComponents]` to `AsenaServerFactory.create()` — its `AuthGuard` enforces the marks (`references/auth.md`). `asena doctor`'s `auth-enforcement` check fails when the marks are imported but no guard is. On a `@WebSocket` class the marks are ignored even then — use `AuthWebSocketMiddleware`.
 - **Rate limiter behind a proxy** — since adapter 5.0.0 `RateLimiterMiddleware` keys on the connecting peer and ignores `X-Forwarded-For` unless `trustProxy` is set. Behind a reverse proxy, without `trustProxy` every client shares the proxy's one bucket.
 - **`CorsMiddleware` is not a WebSocket origin policy** — a disallowed origin still upgrades. Put `WebSocketOriginMiddleware` before any cookie-based auth in `@WebSocket({ middlewares })`.
 - **Validator factory reading request-time state** — with the default `validatorCache: true`, `json()`/`query()` run once at startup; state read inside the factory is frozen. Read mutable state in a `refine`/hook, or set `validatorCache: false`.
@@ -353,6 +354,7 @@ Read the reference before writing code in its area:
 | Route params, cookies, streaming, static files, HTML pages | `references/controllers-and-context.md` |
 | `@Value`, `imports`, scopes, `@Strategy`, lifecycle, shutdown/signals, `server.resolve()`, inheritance, `@PostProcessor` | `references/dependency-injection-and-lifecycle.md` |
 | CORS, rate limiting, auth middleware, route context contracts, Zod validators, `validatorCache` | `references/middleware-and-validation.md` |
+| Authentication: `@Auth`, `@BetterAuth`, `@Protected`/`@Roles` enforcement, sessions, Bearer/WebSocket tokens, `TestAuthProvider` | `references/auth.md` |
 | `@Config`, `HttpException`, shutdown, deployment | `references/configuration-and-errors.md` |
 | WebSocket namespaces, rooms, multi-pod, Ulak broker | `references/websocket-and-ulak.md` |
 | In-process events (`@On`), cron (`@Schedule`) | `references/events-and-scheduling.md` |

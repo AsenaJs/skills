@@ -14,14 +14,14 @@ Or copy `skills/asena/` into your project's skill directory (e.g. `.claude/skill
 
 | Skill | Description |
 |---|---|
-| [`asena`](skills/asena/SKILL.md) | Umbrella skill for the whole framework: core rules, bootstrap, import paths, and per-feature reference files (controllers, DI, middleware, WebSocket, microservices, database, testing, CLI, adapters) loaded on demand |
+| [`asena`](skills/asena/SKILL.md) | Umbrella skill for the whole framework: core rules, bootstrap, import paths, and per-feature reference files (controllers, DI, middleware, auth, WebSocket, microservices, database, testing, CLI, adapters) loaded on demand |
 
 ## What the skill knows
 
 - Only the **published** npm API — the version matrix is at the top of [SKILL.md](skills/asena/SKILL.md).
 - Distilled from the official docs at [asena.sh](https://asena.sh); the full docs remain reachable per page via `https://asena.sh/raw/<path>.md` (see `references/docs-map.md`).
 
-**Synced with asena.sh docs as of 2026-10-31, @asenajs/asena 0.12.1.** ergenecore 5.0.1, hono-adapter 5.0.2, asena-openapi 3.2.0 (these three require core `^0.12.0`); asena-drizzle 4.0.1, asena-redis 4.0.1, asena-kafka 4.0.1, asena-otel 3.0.1, asena-logger 3.0.1 (core `^0.11.0 || ^0.12.0`); asena-cli 0.11.0 — every package requires Bun >= 1.4.0; the full matrix is at the top of [SKILL.md](skills/asena/SKILL.md).
+**Synced with asena.sh docs as of 2026-11-01, @asenajs/asena 0.12.3.** ergenecore 5.0.2, hono-adapter 5.0.3, asena-openapi 3.2.0 (these three require core `^0.12.0`); asena-auth 1.0.0 (core `^0.12.2`); asena-drizzle 4.0.1, asena-redis 4.0.1, asena-kafka 4.0.1, asena-otel 3.0.1, asena-logger 3.0.1 (core `^0.11.0 || ^0.12.0`); asena-cli 0.12.0 — every package requires Bun >= 1.4.0; the full matrix is at the top of [SKILL.md](skills/asena/SKILL.md).
 
 ## Maintenance (release checklist)
 
