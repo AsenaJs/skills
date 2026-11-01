@@ -25,7 +25,7 @@ bun add @asenajs/asena-auth               # native sessions
 bun add @asenajs/asena-auth better-auth   # plus the Better Auth provider
 ```
 
-Requires Bun >= 1.4.0. Peers `@asenajs/asena` `^0.12.2` and, optionally, `better-auth` `>=1.2.0 <2`; the docs require core 0.12.3+ with ergenecore 5.0.2+ or hono-adapter 5.0.3+. Zero runtime dependencies — tokens and password hashing use Bun built-ins, and the package never imports `better-auth`, so an app without that provider does not install it.
+Requires Bun >= 1.4.0. Peers `@asenajs/asena` `^0.12.2` and, optionally, `better-auth` `>=1.2.0 <2`; the docs require ergenecore 5.0.2+ or hono-adapter 5.0.3+. Zero runtime dependencies — tokens and password hashing use Bun built-ins, and the package never imports `better-auth`, so an app without that provider does not install it.
 
 | Import from | Symbols |
 |---|---|
