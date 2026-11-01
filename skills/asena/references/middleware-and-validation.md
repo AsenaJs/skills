@@ -44,6 +44,8 @@ Always `await next()` to pass control on — a bare `next()` without `await` is 
 
 Instead of returning a `Response` you may `throw new HttpException(401, 'Unauthorized')` (from `@asenajs/asena/adapter`) — same class on both adapters, routed to your `onError` handler.
 
+For session or Bearer-token authentication with `@Protected` / `@Roles`, use `@asenajs/asena-auth` rather than hand-writing this middleware — see `auth.md`.
+
 ## Attachment levels
 
 Execution order, identical on both adapters: `globalMiddlewares()` (array order, pattern entries included) → controller `middlewares` → route `middlewares` → validation (contract or `validator`) → handler.

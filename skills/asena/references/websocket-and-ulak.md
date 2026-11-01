@@ -121,6 +121,8 @@ export class WsAuthMiddleware extends MiddlewareService {
 export class PrivateSocket extends AsenaWebSocketService<UserData> { /* ... */ }
 ```
 
+With `@asenajs/asena-auth`, list its `AuthWebSocketMiddleware` instead: it resolves the session from a Bearer header, the `bearer, <token>` subprotocol or the cookie into `ws.data.values.authSession` (`@Protected` on a `@WebSocket` class is ignored) — see `auth.md`.
+
 **Warning:** `CorsMiddleware` does not stop a cross-site handshake — a disallowed origin still upgrades, with the victim's cookies attached. For cookie-authenticated sockets, list a `WebSocketOriginMiddleware` subclass (both adapters, 5.0+) **first**: `middlewares: [ChatOrigin, SessionAuth]`. Options and example in `middleware-and-validation.md`.
 
 ## Pitfalls

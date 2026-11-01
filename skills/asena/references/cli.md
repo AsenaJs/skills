@@ -1,6 +1,6 @@
 # Asena CLI
 
-Command and configuration reference for `@asenajs/asena-cli` (as of 0.11.x): project scaffolding, code generation, dev runs, diagnostics, and production bundling. Requires Bun >= 1.4.0; depends on `@asenajs/asena` `^0.11.0` directly.
+Command and configuration reference for `@asenajs/asena-cli` (as of 0.12.x): project scaffolding, code generation, dev runs, diagnostics, and production bundling. Requires Bun >= 1.4.0; has no `@asenajs/asena` dependency — it reads the project's own core.
 
 ## Contents
 
@@ -163,8 +163,13 @@ asena doctor --json   # the result array as JSON
 | `direct-dependencies` | `@asenajs/asena` and `reflect-metadata` are direct deps, plus `hono`/`zod` when the matching adapter is installed |
 | `duplicate-packages` | `@asenajs/asena`, `hono`, `zod` each resolve to a single version under `node_modules` (incl. the `.bun` store) |
 | `peer-ranges` | Every installed `@asenajs/*` package's peer range for `@asenajs/asena` is satisfied by the installed core |
+| `auth-enforcement` | When `Protected`/`Roles` is imported from `@asenajs/asena/auth`, `authComponents` or `AuthGuard` is imported from `@asenajs/asena-auth` — otherwise the marks are metadata only and those routes are served open |
+| `auth-better-auth-dep` | When `@BetterAuth`, `BetterAuthService` or `BetterAuthController` is used, `better-auth` is in `package.json` and installed |
+| `auth-cookie` | Literal `@Auth` `cookie` options form a cookie browsers accept: no `__Host-` name with `domain`, a non-`/` `path` or `secure: false`; no `__Secure-` name with `secure: false`; no `sameSite: 'none'` with `secure: false` |
 
-Run it first when diagnosing the silent failures below — `duplicate-packages` in particular is the fastest way to rule the `instanceof`/`HttpException` trap in or out. Known false positive: on a core 0.12 project, CLI 0.11.0 brings its own `@asenajs/asena` 0.11.x under `node_modules/@asenajs/asena-cli/node_modules/`, which this check fails on although the app never loads it; only a second copy at any other path is the real trap.
+The three `auth-*` checks read source files as text (skipping `node_modules`, `dist` and comments) and pass when they do not apply. `auth-enforcement` sees the import, not whether it reaches `imports: [...]`; `auth-cookie` skips non-literal values.
+
+Run it first when diagnosing the silent failures below — `duplicate-packages` in particular is the fastest way to rule the `instanceof`/`HttpException` trap in or out. Known false positive: with CLI 0.11.0 installed in a core 0.12 project, the CLI's own `@asenajs/asena` 0.11.x under `node_modules/@asenajs/asena-cli/node_modules/` fails this check although the app never loads it (CLI 0.11.1 and later have no core dependency); only a second copy at any other path is the real trap.
 
 ## asena init
 

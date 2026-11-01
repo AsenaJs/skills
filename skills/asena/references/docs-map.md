@@ -54,6 +54,7 @@ Index of the full official documentation. Fetch any page as raw markdown from it
 | Page | URL | Covers |
 |---|---|---|
 | AsenaLogger | https://asena.sh/raw/packages/logger.md | Winston-based logging, transports (console, file, Loki), profiling |
+| Asena Auth | https://asena.sh/raw/packages/auth.md | Native server-side sessions and Better Auth behind @Protected / @Public / @Roles guards enforced before validators |
 | Asena Drizzle | https://asena.sh/raw/packages/drizzle.md | Type-safe database integration, Repository pattern |
 | Asena OpenAPI | https://asena.sh/raw/packages/openapi.md | OpenAPI 3.1 generation from validators and route contracts, custom converters, Swagger UI or Scalar API Reference |
 | Asena OpenTelemetry | https://asena.sh/raw/packages/opentelemetry.md | HTTP tracing, auto-tracing, metrics, distributed tracing |
