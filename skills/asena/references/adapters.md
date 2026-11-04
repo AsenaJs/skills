@@ -9,7 +9,7 @@ Choosing and configuring AsenaJS HTTP adapters: `@asenajs/ergenecore` (native Bu
 - Hono Adapter Options
 - Adapter Base Classes
 - Built-in Middleware
-- Error & Not-Found Hooks
+- Errors & Unmatched Routes
 - Hono-Specific Features
 - Migrating Between Adapters / From Standalone Hono
 - Custom Adapters
@@ -70,7 +70,7 @@ const [adapter, logger] = createHonoAdapter({ logger: new AsenaLogger() });
 | `logger` | `ServerLogger` | `undefined` | Custom logger |
 | `enableWebSocket` | `boolean` | `true` | WebSocket support |
 | `websocketAdapter` | `ErgenecoreWebsocketAdapter` | auto | Custom WebSocket adapter |
-| `logErrors` | `boolean` | `true` | Log framework-answered failures: 5xx at `error` with stack, 4xx at `debug` (fallback `info`) without, unmatched route at `info`. Requests your `onError`/`onNotFound` answered write nothing. `false` silences all three |
+| `logErrors` | `boolean` | `true` | Log framework-answered failures: 5xx at `error` with stack, 4xx at `debug` (fallback `info`) without, unmatched route at `info`. Requests your own handler answered (`@Catch`, `@NotFound()`, or the deprecated config hooks) write nothing. `false` silences all three |
 
 Two aliases exist; prefer the plain factory:
 
@@ -110,7 +110,8 @@ Since adapter `4.0.0` the context contract is genuinely identical — the three 
 Adapter `5.0.0` (core `^0.12.0`) added `Context.define()` contracts, `validatorCache`, and `WebSocketOriginMiddleware`, and aligned the request pipeline — global → controller → route middleware → validation → handler on both. Breaking: `RateLimiterMiddleware` keys on the connecting peer (see below).
 | `MiddlewareService` | Custom middleware base — implement `handle(context, next)` (its only abstract member) |
 | `ValidationService` | Zod validator base — define `json()`, `query()`, `param()`, etc.; register with `@Middleware({ validator: true })` |
-| `ConfigService` | `@Config()` base — override `globalMiddlewares()`, `onError()`, `onNotFound()`, `transport()` |
+| `ConfigService` | `@Config()` base — override `serveOptions()`, `globalMiddlewares()`, `transport()`; its `onError()` / `onNotFound()` are deprecated (removed in 1.0) — use an `@ExceptionHandler` |
+| `ValidationError` | What a failed validator-class validation throws (status 400); catch it with `@Catch(ValidationError)` |
 | `StaticServeService` | Static file serving with `@StaticServe({ root })`; hooks `rewriteRequestPath`, `onFound`, `onNotFound` |
 
 ```typescript
@@ -209,36 +210,16 @@ Each `X-RateLimit-*` header appears exactly once even when a global and a route 
 
 Sets `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, and `Retry-After` (on 429). Its sweep timer is released via an inherited `@OnStop` on `server.stop()` — no cleanup code needed in subclasses.
 
-## Error & Not-Found Hooks
+## Errors & Unmatched Routes
 
-```typescript
-import { Config } from '@asenajs/asena/decorators';
-import { ConfigService, type Context } from '@asenajs/ergenecore'; // or '@asenajs/hono-adapter'
-import { isHttpException, type NotFoundRequest } from '@asenajs/asena/adapter';
+Error handling is adapter-agnostic: an `@ExceptionHandler` class with `@Catch` / `@NotFound()` methods (`configuration-and-errors.md`) is the same code on both adapters — only the `Context` import differs. The adapter is the last link of the chain: it answers whatever no handler answered.
 
-@Config()
-export class ServerConfig extends ConfigService {
-  globalMiddlewares() { return [GlobalCors, ApiRateLimiter]; }
-
-  onError(error: Error, context: Context): Response | Promise<Response> {
-    if (isHttpException(error)) {
-      // error.message is the body already flattened to a string — don't re-wrap objects
-      return error.getResponse?.() ?? context.send({ error: error.message }, error.status);
-    }
-    return context.send({ error: 'Internal Server Error' }, 500);
-  }
-
-  onNotFound(context: Context, request: NotFoundRequest): Response | Promise<Response> {
-    return context.send({ title: 'Not Found', status: 404, instance: request.path }, 404);
-  }
-}
-```
-
-- `onError` = something your code **threw**; `onNotFound` = request matched **no route** (also fires for files `@StaticServe` cannot find). An unmatched route never reaches `onError`. A domain 404 (route exists, record doesn't) is a throw: `throw new HttpException(404, { error: 'User not found' })` from `@asenajs/asena/adapter`.
-- **Every thrown error reaches `onError` first** — including `HttpException` and (on hono) hono's `HTTPException` and anything hono middleware raised. Fallback to the exception's own response only when no handler exists, it returns nothing, or it throws.
-- Defaults with no hooks: unmatched route → `{"error":"Not Found"}` 404; unhandled error → `{"error":"Internal Server Error"}` 500 (thrown message goes to the log with stack, never to the caller).
-- `request.path` is path-only (no origin/query), `request.method` is normalized — the same handler body works on both adapters.
-- **Always match with `isHttpException()`, never `instanceof`.** On hono, apps throw core `HttpException` while `hono/basic-auth`, `hono/bearer-auth`, `hono/jwt` and hono's validator throw `HTTPException` — either `instanceof` misses half your 4xx and turns them into 500s. `isHttpException()` matches both and survives duplicate `@asenajs/asena` copies. Import `HTTPException` from `@asenajs/hono-adapter`, never from `hono/http-exception` (a second `hono` copy defeats even the guard). Ergenecore re-exports `HttpException` (same class object); hono-adapter deliberately does not.
+- A thrown error = `@Catch`; a request that matched **no route** (also a file `@StaticServe` cannot find) = `@NotFound()`. An unmatched route never reaches `@Catch`. A domain 404 (route exists, record doesn't) is a throw: `throw new NotFoundException({ error: 'User not found' })` from `@asenajs/asena/adapter`.
+- **Every thrown error is offered to `@Catch`** — including `HttpException`, its status subclasses, validation failures and (on hono) hono's `HTTPException` and anything hono middleware raised; `@Catch(HttpException)` receives hono's `HTTPException` through the shared brand.
+- Adapter defaults, when nothing answered: a branded HTTP exception answers from its own status and body; a validation failure answers with the validation envelope; anything else → `{"error":"Internal Server Error"}` 500 (thrown message goes to the log with stack, never to the caller); unmatched route → `{"error":"Not Found"}` 404.
+- `request.path` is path-only (no origin/query), `request.method` is normalized — the same `@NotFound()` body works on both adapters.
+- `ValidationError` is adapter-specific: ergenecore's extends core `HttpException`, hono's extends hono's `HTTPException`. Import it from the adapter you run on; a route context contract throws core's `ContractValidationError` on both.
+- **Inside a handler, test with `isHttpException()`, never `instanceof`.** On hono, apps throw core `HttpException` while `hono/basic-auth`, `hono/bearer-auth`, `hono/jwt` and hono's validator throw `HTTPException` — either `instanceof` misses half your 4xx and turns them into 500s. `isHttpException()` matches both and survives duplicate `@asenajs/asena` copies. Import `HTTPException` from `@asenajs/hono-adapter`, never from `hono/http-exception` (a second `hono` copy defeats even the guard). Ergenecore re-exports `HttpException` (same class object); hono-adapter deliberately does not.
 
 ## Hono-Specific Features
 

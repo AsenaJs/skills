@@ -76,8 +76,8 @@ Index of the full official documentation. Fetch any page as raw markdown from it
 
 | Page | URL | Covers |
 |---|---|---|
-| Configuration | https://asena.sh/raw/guides/configuration.md | @Config: global middleware, error handling, env vars, transports |
-| Error Handling | https://asena.sh/raw/guides/error-handling.md | HttpException, global handlers, custom errors, duplicate-module forensics |
+| Configuration | https://asena.sh/raw/guides/configuration.md | @Config: serve options, global middleware, env vars, transports |
+| Error Handling | https://asena.sh/raw/guides/error-handling.md | @ExceptionHandler, @Catch, @NotFound, scopes and the resolution chain, HttpException and status exceptions, custom errors, duplicate-module forensics |
 | Deployment | https://asena.sh/raw/guides/deployment.md | Production build and deployment |
 
 ## Testing

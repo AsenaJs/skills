@@ -1,6 +1,6 @@
 # Middleware & Validation
 
-How to write Asena middleware, attach it at the four levels, use adapter built-ins, and validate requests with route context contracts or Zod validator classes (as of @asenajs/asena 0.12.x, ergenecore / hono-adapter 5.x).
+How to write Asena middleware, attach it at the four levels, use adapter built-ins, and validate requests with route context contracts or Zod validator classes (as of @asenajs/asena 0.13.x, ergenecore / hono-adapter 5.x).
 
 ## Contents
 
@@ -42,7 +42,7 @@ export class AuthMiddleware extends MiddlewareService {
 
 Always `await next()` to pass control on — a bare `next()` without `await` is a bug. Middleware supports `@Inject` exactly like services.
 
-Instead of returning a `Response` you may `throw new HttpException(401, 'Unauthorized')` (from `@asenajs/asena/adapter`) — same class on both adapters, routed to your `onError` handler.
+Instead of returning a `Response` you may `throw new UnauthorizedException()` (or `new HttpException(401, 'Unauthorized')`, both from `@asenajs/asena/adapter`) — same classes on both adapters. A matching `@Catch` in your `@ExceptionHandler` answers it; otherwise it answers itself from its own status and body.
 
 For session or Bearer-token authentication with `@Protected` / `@Roles`, use `@asenajs/asena-auth` rather than hand-writing this middleware — see `auth.md`.
 
@@ -102,7 +102,7 @@ Three portable ways to short-circuit (handler never runs):
 
 - `return context.send(...)` — any returned `Response` stops the chain
 - `return false` — plain `403 Forbidden` on both adapters
-- `throw new HttpException(status, message)` — routed to `onError`
+- `throw new HttpException(status, message)` (or a status exception such as `ForbiddenException`) — answered by a matching `@Catch`, else by its own status
 
 **Warning:** Omitting `next()` is NOT portable. On hono, returning without calling `next()` ends the chain; on ergenecore, a `void`/`true` return without `next()` continues to the next middleware anyway. Always signal explicitly.
 
@@ -221,7 +221,7 @@ export class OrderController {
 - `context.input.<target>` holds the schema **output** (defaults, transforms, coercions applied); only declared targets exist on it. `getBody()` / `getParseBody()` return the validated `body` / `form` output; `getQuery()`, `getParam()`, `headers` still return **raw** values — read `context.input` for typed ones.
 - `context.input` is per-request, frozen at top level (not deep-frozen), and **throws** when read before validation finished: in middleware, the constructor, or a field initializer.
 - The handler gets a real instance of your subclass (`instanceof` and getters work). A class from one adapter's `define()` fails the boot on the other adapter.
-- Errors: schema issues → **400**; malformed JSON → **400**; non-empty `body` whose content type is not `application/json`/`application/*+json` → **415**; `form` with another content type → **415**. Failures throw a `ValidationError` (`target` = contract key, `issues[].path` normalized to strings/numbers) that reaches `onError`; unhandled, the response is `{ "error": "Validation failed", "target": "body", "issues": [{ "message", "path" }] }`. An exception thrown *inside* a schema is not a validation failure — it reaches `onError` as thrown.
+- Errors: schema issues → **400**; malformed JSON → **400**; non-empty `body` whose content type is not `application/json`/`application/*+json` → **415**; `form` with another content type → **415**. Schema issues throw a `ContractValidationError` (from `@asenajs/asena/adapter`; `target` = contract key, `issues[].path` normalized to strings/numbers); the content-type and unreadable-body failures throw a plain `HttpException`. Both reach your `@Catch`; left unanswered, a schema failure answers `{ "error": "Validation failed", "target": "body", "issues": [{ "message", "path" }] }`. An exception thrown *inside* a schema is not a validation failure — it reaches `@Catch` as thrown.
 - A route cannot combine a contract with `validator`, and `validatorCache` on a contract route fails startup.
 - **Requirements:** `experimentalDecorators` + `emitDecoratorMetadata`, and the class referenced as a **value** (same file, or imported without `import type`). Otherwise the route registers **without a contract** — nothing validated, `context.input` throws. Keep contracts next to their controller (e.g. `orders/CancelOrderContext.ts`).
 
@@ -284,14 +284,14 @@ json(): ValidationSchemaWithHook {
   return {
     schema: z.object({ email: z.string().email(), password: z.string().min(8) }),
     hook: (result, context) => {
-      if (!result.success) return; // failure flows on to onError / default envelope
+      if (!result.success) return; // failure flows on to @Catch / default envelope
       context.setValue('validatedEmail', result.data.email);
     },
   };
 }
 ```
 
-Hook signature: `(result: z.ZodSafeParseResult<T>, context) => Response | void | Promise<Response | void>`. The data lives at `result.data` and only when `result.success` is true — branch on it first. Returning a `Response` answers the request as-is and `onError` never runs; returning a plain object does nothing — the hook cannot transform the payload, stash reshaped data with `setValue()` instead.
+Hook signature: `(result: z.ZodSafeParseResult<T>, context) => Response | void | Promise<Response | void>`. The data lives at `result.data` and only when `result.success` is true — branch on it first. Returning a `Response` answers the request as-is and no `@Catch` runs; returning a plain object does nothing — the hook cannot transform the payload, stash reshaped data with `setValue()` instead.
 
 Adapter differences:
 
@@ -318,35 +318,32 @@ Adapter differences:
 
 ## Validation error handling
 
-A failed validation always throws a `ValidationError` carrying HTTP status 400.
+A failed validation always throws a status-400 `HttpException` subclass that `isValidationError()` recognises: `ContractValidationError` (`@asenajs/asena/adapter`) for a route context contract, the adapter's `ValidationError` (`@asenajs/ergenecore` / `@asenajs/hono-adapter`) for a validator class.
 
-- **No `onError` handler** (or the handler returns nothing): for a validator class, both adapters answer with the flattened envelope `{ "error": "Validation failed", "details": { "formErrors": [], "fieldErrors": {...} }, "target": "json" }` — `target` names the failed part: `json` | `query` | `form` | `param` | `header`. A contract failure has no `details` and uses the contract key as `target` (`body` | `form` | `query` | `params` | `headers`) — see Route context contracts.
-- **`onError` defined** on your `@Config` class: the `ValidationError` arrives there like any other error. Match with `isValidationError()`:
+- **Nothing answers it** (no matching `@Catch`, or it returns nothing): for a validator class, both adapters answer with the flattened envelope `{ "error": "Validation failed", "details": { "formErrors": [], "fieldErrors": {...} }, "target": "json" }` — `target` names the failed part: `json` | `query` | `form` | `param` | `header`. A contract failure has no `details` and uses the contract key as `target` (`body` | `form` | `query` | `params` | `headers`) — see Route context contracts.
+- **A dedicated handler** in an `@ExceptionHandler` class: catch both classes, so contracts and validator classes share one envelope:
 
 ```typescript
-import { Config } from '@asenajs/asena/decorators';
-import { isValidationError, isHttpException } from '@asenajs/asena/adapter';
-import { ConfigService, type Context } from '@asenajs/ergenecore';
+import { ExceptionHandler } from '@asenajs/asena/decorators';
+import { Catch, type ExceptionContext } from '@asenajs/asena/exception';
+import { ContractValidationError } from '@asenajs/asena/adapter';
+import { ValidationError, type Context } from '@asenajs/ergenecore'; // or '@asenajs/hono-adapter'
 
-@Config()
-export class ServerConfig extends ConfigService {
-  public onError(error: Error, context: Context): Response {
-    if (isValidationError(error)) {
-      // error.issues: [{ path, message, code }]; error.target; error.cause = original ZodError
-      const errors = error.issues.map((i) => ({ field: i.path.join('.'), message: i.message }));
-      return context.send({ success: false, message: 'Validation failed', errors }, 400);
-    }
-    if (isHttpException(error)) {
-      return error.getResponse?.() ?? context.send({ error: error.message }, error.status);
-    }
-    return context.send({ success: false, message: 'Internal Server Error' }, 500);
+@ExceptionHandler()
+export class ValidationExceptionHandler {
+  @Catch(ContractValidationError, ValidationError)
+  public invalid(error: ContractValidationError | ValidationError, ctx: ExceptionContext<Context>) {
+    if (ctx.scope !== 'http') return;
+    // error.issues: [{ path, message, code? }]; error.target names the failed part
+    const errors = error.issues.map((i) => ({ field: i.path.join('.'), message: i.message }));
+    return ctx.context.send({ success: false, message: 'Validation failed', errors }, 400);
   }
 }
 ```
 
 Rules:
 
-- Check `isValidationError()` BEFORE `isHttpException()` — a `ValidationError` is itself an HTTP exception (status 400), so a generic branch placed above it swallows it.
-- Match with the guards, never `instanceof` — the concrete class differs per adapter (ergenecore's extends `HttpException`, hono's extends hono's `HTTPException`).
-- Zod 4 removed `ZodError.errors` — read `issues`, or `error.cause` for the full `ZodError` (e.g. `z.treeifyError(error.cause)`).
-- A hook that returns a `Response` wins: it is sent as-is and `onError` is never reached for that request.
+- Most specific wins, so this handler takes validation failures ahead of a `@Catch(HttpException)` or a catch-all. Without it, those receive them — a `@Catch(HttpException)` must check `isValidationError(error)` first (`configuration-and-errors.md`).
+- Outside `@Catch` (in plain code), test with `isValidationError()`, never `instanceof` — the concrete class differs per adapter (ergenecore's extends `HttpException`, hono's extends hono's `HTTPException`) and a duplicate module copy defeats `instanceof`.
+- Zod 4 removed `ZodError.errors` — read `issues`, or, for a validator class, `error.cause` for the full `ZodError` (e.g. `z.treeifyError(error.cause)`).
+- A hook that returns a `Response` wins: it is sent as-is and no `@Catch` runs for that request.

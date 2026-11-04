@@ -109,6 +109,8 @@ export class ServerConfig extends ConfigService {
 }
 ```
 
+The generated `onError()` is a deprecated hook (removed in 1.0), and as written it answers every error — validation 400s and deliberate 401/404s included — with a 500 that leaks `error.message`. Delete it from the generated file and handle errors in an `@ExceptionHandler` class instead (`configuration-and-errors.md`).
+
 ```typescript
 // asena g ws Chat -> src/namespaces/ChatNamespace.ts
 // Adapter-agnostic: base class and Socket come from core, not the adapter package
