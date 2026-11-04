@@ -357,7 +357,7 @@ await app.get('/users').expectStatus(200).expectJson([{ id: '1' }]);
 | Command | Effect |
 |---|---|
 | `asena create [name] --adapter=<hono\|ergenecore>` | Scaffold a project |
-| `asena generate controller\|service\|middleware\|validator\|config\|websocket` (`asena g c\|s\|m\|v\|config\|ws`) | Generate a component |
+| `asena generate controller\|service\|middleware\|validator\|config\|exception-handler\|websocket` (`asena g c\|s\|m\|v\|config\|eh\|ws`) | Generate a component |
 | `asena build` | Production bundle → `dist/index.asena.js`. Does NOT rewrite your entry file; a hand-written `components:` array is yours and wins |
 | `asena init` | Create `asena-config.ts` |
 | `asena doctor` | Read-only project check (decorator flags, duplicate copies, peer ranges, minify settings, auth wiring); exit 1 on failure |

@@ -1,6 +1,6 @@
 # Asena CLI
 
-Command and configuration reference for `@asenajs/asena-cli` (as of 0.12.x): project scaffolding, code generation, dev runs, diagnostics, and production bundling. Requires Bun >= 1.4.0; has no `@asenajs/asena` dependency — it reads the project's own core.
+Command and configuration reference for `@asenajs/asena-cli` (as of 0.13.x): project scaffolding, code generation, dev runs, diagnostics, and production bundling. Requires Bun >= 1.4.0; has no `@asenajs/asena` dependency — it reads the project's own core.
 
 ## Contents
 
@@ -30,6 +30,7 @@ bun install -g @asenajs/asena-cli   # install; verify with: asena --version
 | `asena generate middleware` | `asena g m` | Generate a middleware |
 | `asena generate validator` | `asena g v` | Generate a Zod validator |
 | `asena generate config` | `asena g config` | Generate a server config |
+| `asena generate exception-handler` | `asena g eh` | Generate an `@ExceptionHandler` class |
 | `asena generate websocket` | `asena g ws` | Generate a WebSocket namespace |
 | `asena dev start` | — | Build once, then run (development only; slated for removal — prefer `bun run --hot src/index.ts`) |
 | `asena build` | — | Bundle for production |
@@ -58,7 +59,7 @@ asena create my-app --adapter=hono   # prompts for the remaining options
 
 Emits: `src/controllers/AsenaController.ts`, `src/index.ts`, `asena-config.ts`, `.asena/config.json` (+ schema), `package.json`, `tsconfig.json`, `.gitignore`; `src/logger/logger.ts` when logger enabled; ESLint/Prettier configs when enabled.
 
-**Note:** `services/`, `middlewares/`, `config/`, `namespaces/` are NOT pre-created — `asena generate` creates each folder on first use, and the component scanner walks the entire `sourceFolder` tree, so layout is convention only.
+**Note:** `services/`, `middlewares/`, `config/`, `exceptions/`, `namespaces/` are NOT pre-created — `asena generate` creates each folder on first use, and the component scanner walks the entire `sourceFolder` tree, so layout is convention only.
 
 ## asena generate — emitted shapes
 
@@ -99,17 +100,35 @@ export class AuthMiddleware extends MiddlewareService {
 ```typescript
 // asena g config Server -> src/config/ServerConfig.ts
 import { Config } from '@asenajs/asena/decorators';
-import { ConfigService, type Context } from '@asenajs/ergenecore';
+import { ConfigService } from '@asenajs/ergenecore';
 
 @Config()
-export class ServerConfig extends ConfigService {
-  public onError(error: Error, context: Context): Response | Promise<Response> {
-    return context.send({ error: error.message }, 500);
+export class ServerConfig extends ConfigService {}
+```
+
+The config is empty: add `serveOptions()`, `globalMiddlewares()` or `transport()` as needed. Error handling does not go here — generate an exception handler.
+
+```typescript
+// asena g eh App -> src/exceptions/AppExceptionHandler.ts
+import { ExceptionHandler } from '@asenajs/asena/decorators';
+import { Catch, type ExceptionContext } from '@asenajs/asena/exception';
+import { isHttpException } from '@asenajs/asena/adapter';
+import type { Context } from '@asenajs/ergenecore';
+
+@ExceptionHandler()
+export class AppExceptionHandler {
+  @Catch()
+  public fallback(error: unknown, ctx: ExceptionContext<Context>) {
+    if (ctx.scope !== 'http' || isHttpException(error)) return;
+
+    console.error('Unhandled error:', error);
+
+    return ctx.context.send({ error: 'Internal Server Error' }, 500);
   }
 }
 ```
 
-The generated `onError()` is a deprecated hook (removed in 1.0), and as written it answers every error — validation 400s and deliberate 401/404s included — with a 500 that leaks `error.message`. Delete it from the generated file and handle errors in an `@ExceptionHandler` class instead (`configuration-and-errors.md`).
+The generated catch-all needs core 0.13. It declines everything outside HTTP (a message caller still gets `REMOTE_ERROR`, events keep their retry / DLQ) and every `HttpException` — validation errors included — so those keep their own status and body; anything else is logged and answered with a 500 that does not leak the message. Add `@Catch(...)` methods for your own errors and swap `console.error` for an injected logger (`configuration-and-errors.md`).
 
 ```typescript
 // asena g ws Chat -> src/namespaces/ChatNamespace.ts
@@ -134,7 +153,7 @@ Builds the project, registers all discovered components, runs the bundle. Takes 
 ## asena build
 
 1. Reads `asena-config.ts`
-2. Scans `sourceFolder` for controllers, services, middlewares, configs, websockets
+2. Scans `sourceFolder` for controllers, services, middlewares, configs, exception handlers, websockets
 3. Writes a **temporary wrapper entry** in the OS temp dir (outside `sourceFolder`): it imports every scanned component, publishes them on `globalThis[Symbol.for('asena.buildComponents')]`, then imports your entry file
 4. Bundles that wrapper with Bun's bundler and deletes the temp files
 5. Writes to `buildOptions.outdir` — output file is always `<outdir>/index.asena.js`
@@ -248,7 +267,7 @@ export default defineConfig({
 
 `.asena/config.json` (created by `asena create` / `asena init`) stores the adapter and the class-name suffixes `asena generate` appends. Changes apply immediately, no restart. A missing `suffixes` field means defaults (`true`).
 
-Defaults: Controller → `Controller`, Service → `Service`, Middleware → `Middleware`, Config → `Config`, WebSocket → `Namespace`.
+Defaults: Controller → `Controller`, Service → `Service`, Middleware → `Middleware`, Config → `Config`, Exception handler (`exceptionHandler` key) → `ExceptionHandler`, WebSocket → `Namespace`.
 
 ```json
 {
