@@ -14,6 +14,7 @@ Broker-agnostic service-to-service messaging: `@MessageController` handlers, the
 - Kafka Transport
 - Kafka External Topics (Interop)
 - Delivery Semantics
+- Handler Failures and @Catch
 - Idempotency and DLQ
 - Multiple Named Transports
 - Headless Mode and Health
@@ -255,7 +256,7 @@ Rules: **always `prefix: false`** on a prefixed controller — otherwise the han
 | Aspect | Events (`@EventPattern`) | RPC (`@MessagePattern`) |
 |---|---|---|
 | Guarantee | **At-least-once** (consumer groups + ack/commit) | At-most-once per attempt |
-| Handler error | No ack → redelivered up to `maxRetries`, then **DLQ** | **Final**: `ok:false` reply + ack — no broker retry |
+| Handler error | No ack → redelivered up to `maxRetries`, then **DLQ** (a `@Catch` only observes) | **Final**: `ok:false` reply + ack — no broker retry (unless a `@Catch` returns a reply) |
 | Service offline | Messages wait in the stream/topic | Caller times out (`UlakErrorCode.TIMEOUT`) |
 | Crash mid-handling | Another replica takes over (Redis: XCLAIM; Kafka: rebalance) | Rescued only if the caller hasn't timed out |
 
@@ -264,6 +265,30 @@ Operational rules:
 - Handler duration below `claimIdleMs` (Redis) / `sessionTimeout` (Kafka), or a second replica processes the same entry concurrently.
 - `maxStreamLength` bounds offline tolerance — events older than the trim window are lost to services down too long.
 - **`@OnStart` cannot send messages** — `ulak.send`/`emit` there throws `NO_TRANSPORT` (transports are wired during application setup, after start hooks). Defer the first publish. `@OnStop` **can** publish (transports torn down after stop hooks).
+
+## Handler Failures and @Catch
+
+A throwing `@MessagePattern` / `@EventPattern` handler is offered to the application's `@ExceptionHandler` classes before the transport sees it. The `@Catch` receives `ctx.scope === 'microservice'` with `ctx.kind`, `ctx.message` (`MessageContext`), `ctx.data`, `ctx.source` (`OrderHandler.create`) and `ctx.transport` (`default`, or the named transport):
+
+| `ctx.kind` | `@Catch` returns a value | `@Catch` returns nothing, or throws |
+|:--|:--|:--|
+| `'message'` (`@MessagePattern`) | The value **is the reply** — the caller's `send()` resolves with it | The original error reaches the transport — `ok:false` reply, caller gets `REMOTE_ERROR` |
+| `'event'` (`@EventPattern`) | **Ignored**, with a warning naming the `@Catch` — the original error still reaches the transport | The original error reaches the transport |
+
+`@EventPattern` is **observe-only**: whatever the `@Catch` does, the event is not acknowledged, so it is redelivered up to `maxRetries` and then dead-lettered exactly as without a handler. Alert or count there; to swallow a poison event deliberately, catch inside the handler and return.
+
+```typescript
+@Catch(OrderNotFoundError)
+public orderMissing(error: OrderNotFoundError, ctx: ExceptionContext<Context>) {
+  if (ctx.scope === 'microservice' && ctx.kind === 'message') {
+    return { ok: false, code: 'ORDER_NOT_FOUND' };            // becomes the RPC reply
+  }
+  if (ctx.scope !== 'http') return;
+  return ctx.context.send({ error: error.message }, 404);
+}
+```
+
+The `@Catch` runs outside the messaging interceptor chain (as the HTTP handler runs outside middleware): interceptors such as `otelMessaging` record the original failure. An error no `@Catch` matches reaches the transport untouched. Handler setup and resolution rules: `configuration-and-errors.md`.
 
 ## Idempotency and DLQ
 
@@ -371,7 +396,7 @@ try {
 | `NO_TRANSPORT` | `send`/`emit` called but no microservice transport configured (includes calls inside `@OnStart`) |
 | `TRANSPORT_NOT_FOUND` | Named transport does not exist (message lists available names) |
 | `TIMEOUT` | No reply within the caller's timeout (`send`) |
-| `REMOTE_ERROR` | Remote handler threw **or exceeded `handlerTimeout`** — responder replies `ok:false`, so the caller sees `REMOTE_ERROR`, not `TIMEOUT` |
+| `REMOTE_ERROR` | Remote handler threw (and no `@Catch` on the remote side returned a reply) **or exceeded `handlerTimeout`** — responder replies `ok:false`, so the caller sees `REMOTE_ERROR`, not `TIMEOUT` |
 | `SEND_FAILED` | Broker publish failed / no handler registered (InMemoryTransport) / `send()` to a Kafka external topic |
 
 ## Custom Transport SPI
