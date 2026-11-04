@@ -11,23 +11,23 @@ AsenaJS is a decorator-based IoC web framework that runs ONLY on Bun. It looks l
 
 ## Version matrix
 
-Package versions are NOT aligned — do not assume one version number across packages. As of this skill's sync (2026-11-01, the asena-auth 1.0.0 release). If an installed package resolves lower than the table shows, the behaviour this file describes for it may not apply — check before relying on it.
+Package versions are NOT aligned — do not assume one version number across packages. As of this skill's sync (the `@asenajs/asena` 0.13.0 release). If an installed package resolves lower than the table shows, the behaviour this file describes for it may not apply — check before relying on it.
 
 | Package | npm | Version | Peer deps |
 |---|---|---|---|
-| Core framework | `@asenajs/asena` | 0.12.3 | — (`reflect-metadata` only runtime dep) |
-| CLI | `@asenajs/asena-cli` | 0.12.0 | — (no `@asenajs/asena` dependency; reads the project's own core) |
-| Hono adapter | `@asenajs/hono-adapter` | 5.0.3 | `hono`, `zod`, core `^0.12.0` |
-| Ergenecore adapter (native Bun) | `@asenajs/ergenecore` | 5.0.2 | `zod`, core `^0.12.0` |
-| Auth (sessions, Better Auth, route guards) | `@asenajs/asena-auth` | 1.0.0 | core `^0.12.2`; `better-auth` optional (Better Auth provider only) |
-| Redis (cache + transports) | `@asenajs/asena-redis` | 4.0.1 | `redis` |
-| Kafka (client + transport) | `@asenajs/asena-kafka` | 4.0.1 | `kafkajs` |
-| OpenAPI | `@asenajs/asena-openapi` | 3.2.0 | `zod`, core `^0.12.0` |
-| OpenTelemetry | `@asenajs/asena-otel` | 3.0.1 | `@opentelemetry/*` SDK family |
-| Drizzle ORM | `@asenajs/asena-drizzle` | 4.0.1 | `drizzle-orm` (+ `pg` or `mysql2` per driver) |
-| Logger | `@asenajs/asena-logger` | 3.0.1 | — |
+| Core framework | `@asenajs/asena` | 0.13.0 | — (`reflect-metadata` only runtime dep) |
+| CLI | `@asenajs/asena-cli` | 0.13.0 | — (no `@asenajs/asena` dependency; reads the project's own core) |
+| Hono adapter | `@asenajs/hono-adapter` | 5.1.1 | `hono`, `zod`, core `^0.12.0 \|\| ^0.13.0` |
+| Ergenecore adapter (native Bun) | `@asenajs/ergenecore` | 5.0.4 | `zod`, core `^0.12.0 \|\| ^0.13.0` |
+| Auth (sessions, Better Auth, route guards) | `@asenajs/asena-auth` | 1.0.1 | core `^0.12.2 \|\| ^0.13.0`; `better-auth` optional (Better Auth provider only) |
+| Redis (cache + transports) | `@asenajs/asena-redis` | 4.0.2 | `redis` |
+| Kafka (client + transport) | `@asenajs/asena-kafka` | 4.0.2 | `kafkajs` |
+| OpenAPI | `@asenajs/asena-openapi` | 3.2.1 | `zod`, core `^0.12.0 \|\| ^0.13.0` |
+| OpenTelemetry | `@asenajs/asena-otel` | 3.0.2 | `@opentelemetry/*` SDK family |
+| Drizzle ORM | `@asenajs/asena-drizzle` | 4.1.1 | `drizzle-orm` (+ `pg` or `mysql2` per driver) |
+| Logger | `@asenajs/asena-logger` | 3.0.2 | — |
 
-Both adapters and `asena-openapi` peer `@asenajs/asena` `^0.12.0`; `asena-auth` peers `^0.12.2` (its docs require ergenecore 5.0.2+ or hono-adapter 5.0.3+), is adapter-agnostic, and ships a `@asenajs/asena-auth/testing` subpath; the other add-ons (redis, kafka, otel, drizzle, logger) peer `^0.11.0 || ^0.12.0`. `reflect-metadata` comes in through core. `asena-cli` 0.11.0 depends on `@asenajs/asena` `^0.11.0` (0.11.1 and later have no core dependency): on a 0.12 project it nests a second copy at `node_modules/@asenajs/asena-cli/node_modules/@asenajs/asena` that app code never resolves but `asena doctor`'s `duplicate-packages` check reports — upgrade the CLI to remove it. Every package requires **Bun >= 1.4.0**. There is no Node.js support — both adapters bind to `Bun.serve()`.
+Both adapters and `asena-openapi` peer `@asenajs/asena` `^0.12.0 || ^0.13.0`; `asena-auth` peers `^0.12.2 || ^0.13.0` (its docs require ergenecore 5.0.2+ or hono-adapter 5.0.3+), is adapter-agnostic, and ships a `@asenajs/asena-auth/testing` subpath; the other add-ons (redis, kafka, otel, drizzle, logger) peer `^0.11.0 || ^0.12.0 || ^0.13.0`. On core 0.13 every `@asenajs/*` package must be at least the version in the table — earlier releases do not accept 0.13 as a peer. `reflect-metadata` comes in through core. `asena-cli` 0.11.0 depends on `@asenajs/asena` `^0.11.0` (0.11.1 and later have no core dependency): on a 0.12 or 0.13 project it nests a second copy at `node_modules/@asenajs/asena-cli/node_modules/@asenajs/asena` that app code never resolves but `asena doctor`'s `duplicate-packages` check reports — upgrade the CLI to remove it. Every package requires **Bun >= 1.4.0**. There is no Node.js support — both adapters bind to `Bun.serve()`.
 
 Error handling follows `@asenajs/asena` **0.13.0**: `@ExceptionHandler` / `@Catch` / `@NotFound`, the `@asenajs/asena/exception` subpath and the ready-made status exceptions (`NotFoundException`, …) need core 0.13.0; `@Config.onError` / `onNotFound` are deprecated in 0.13.0 and removed in 1.0.
 

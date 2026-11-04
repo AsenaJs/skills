@@ -146,7 +146,7 @@ bun dist/index.asena.js   # run the production bundle
 
 - **Your entry file is never rewritten** and its module-level code does not run at build time. Earlier CLI versions parsed the `AsenaServerFactory.create({...})` call and injected a `components: [...]` array, which imposed invisible formatting rules on the entry.
 - **A hand-written `components: [...]` array is user-owned.** It is left untouched and, when non-empty, wins over the build's list. Delete it to let the build supply the components.
-- **Requires the app's `@asenajs/asena` >= 0.11.0** (0.12.x included) — 0.11.0 is the first core version that reads the build list. On an older core the bundle falls back to the filesystem scan and dies in production with `No components or configuration found`.
+- **Requires the app's `@asenajs/asena` >= 0.11.0** (0.12.x and 0.13.x included) — 0.11.0 is the first core version that reads the build list. On an older core the bundle falls back to the filesystem scan and dies in production with `No components or configuration found`.
 - **`minify.identifiers` is forced to `false`** (and `minify: true` is narrowed to `{ whitespace, syntax, identifiers: false }`), logging `[build] minify.identifiers disabled: component names are read at runtime`.
 
 ## asena doctor
@@ -171,7 +171,7 @@ asena doctor --json   # the result array as JSON
 
 The three `auth-*` checks read source files as text (skipping `node_modules`, `dist` and comments) and pass when they do not apply. `auth-enforcement` sees the import, not whether it reaches `imports: [...]`; `auth-cookie` skips non-literal values.
 
-Run it first when diagnosing the silent failures below — `duplicate-packages` in particular is the fastest way to rule the `instanceof`/`HttpException` trap in or out. Known false positive: with CLI 0.11.0 installed in a core 0.12 project, the CLI's own `@asenajs/asena` 0.11.x under `node_modules/@asenajs/asena-cli/node_modules/` fails this check although the app never loads it (CLI 0.11.1 and later have no core dependency); only a second copy at any other path is the real trap.
+Run it first when diagnosing the silent failures below — `duplicate-packages` in particular is the fastest way to rule the `instanceof`/`HttpException` trap in or out. Known false positive: with CLI 0.11.0 installed in a core 0.12 or 0.13 project, the CLI's own `@asenajs/asena` 0.11.x under `node_modules/@asenajs/asena-cli/node_modules/` fails this check although the app never loads it (CLI 0.11.1 and later have no core dependency); only a second copy at any other path is the real trap.
 
 ## asena init
 
