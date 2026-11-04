@@ -252,7 +252,7 @@ A `@Catch` method receives `(error, ctx: ExceptionContext<Context>)`. `Exception
 | `ctx.scope` | Raised in | Fields | A returned value |
 |:--|:--|:--|:--|
 | `'http'` | Controller handlers, middleware, validators (contracts and validator classes) | `context` — the adapter `Context` (`send()`, `req`, headers) | A `Response` answers the request. Any other value is logged as an error and treated as a decline |
-| `'microservice'`, `kind: 'message'` | `@MessagePattern` handlers | `message` (`MessageContext`), `data`, `source` (`OrderHandler.create`), `transport` (`default`) | Becomes the reply. `undefined` rethrows the original error to the transport — the caller gets `REMOTE_ERROR` |
+| `'microservice'`, `kind: 'message'` | `@MessagePattern` handlers | `message` (`MessageContext`), `data`, `source` (`OrderHandler.create`), `transport` (`default`) | Becomes the reply, delivered as a **success** (the caller's `send()` resolves with it, even `{ ok: false }` or `null`). A `Response` is not a reply: it is declined with a warning naming the `@Catch`. `undefined` and a `Response` rethrow the original error to the transport — the caller gets `REMOTE_ERROR` |
 | `'microservice'`, `kind: 'event'` | `@EventPattern` handlers | same as `message` | **Ignored, with a warning.** The original error always reaches the transport, so its retry / DLQ policy applies unchanged |
 | `'event'` | `@On` handlers | `event` (`user.created`), `data`, `source` (absent for a handler registered imperatively on the emitter) | **Ignored, with a warning.** The default `[EventDispatchService]` error line is always logged |
 
@@ -278,7 +278,7 @@ Thrown error     →  @Catch (most specific)  →  @Config.onError (deprecated) 
 Unmatched route  →  @NotFound()             →  @Config.onNotFound (deprecated) →  adapter's 404
 ```
 
-- **Declining** = returning `undefined` (or nothing). The next link answers. On HTTP a non-`Response` return value also declines, with an error log.
+- **Declining** = returning `undefined` (or nothing). The next link answers. On HTTP a non-`Response` return value also declines, with an error log; for a `@MessagePattern` a `Response` declines, with a warning. Declining is how a `@MessagePattern` caller gets to see the failure.
 - **A handler that throws** is logged (`@Catch handler ApiExceptionHandler.http() threw an error, falling back to the framework default`) and counts as a decline: the *original* error continues, never the handler's. A broken handler cannot make a request hang. The same holds for `@NotFound()`.
 - **Adapter default for a thrown error:** any branded `HttpException` answers from its own status and body; a validation failure answers with the adapter's validation envelope (see Validation Failures); anything else becomes `{"error":"Internal Server Error"}`, status 500 — the message and stack go to the log, never to the caller.
 - Outside HTTP the chain stops after `@Catch`: `@Config.onError` is HTTP-only.

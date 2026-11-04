@@ -256,7 +256,7 @@ Rules: **always `prefix: false`** on a prefixed controller — otherwise the han
 | Aspect | Events (`@EventPattern`) | RPC (`@MessagePattern`) |
 |---|---|---|
 | Guarantee | **At-least-once** (consumer groups + ack/commit) | At-most-once per attempt |
-| Handler error | No ack → redelivered up to `maxRetries`, then **DLQ** (a `@Catch` only observes) | **Final**: `ok:false` reply + ack — no broker retry (unless a `@Catch` returns a reply) |
+| Handler error | No ack → redelivered up to `maxRetries`, then **DLQ** (a `@Catch` only observes) | **Final**: `ok:false` reply + ack — no broker retry (unless a `@Catch` returns a reply, which the caller receives as a success) |
 | Service offline | Messages wait in the stream/topic | Caller times out (`UlakErrorCode.TIMEOUT`) |
 | Crash mid-handling | Another replica takes over (Redis: XCLAIM; Kafka: rebalance) | Rescued only if the caller hasn't timed out |
 
@@ -270,10 +270,12 @@ Operational rules:
 
 A throwing `@MessagePattern` / `@EventPattern` handler is offered to the application's `@ExceptionHandler` classes before the transport sees it. The `@Catch` receives `ctx.scope === 'microservice'` with `ctx.kind`, `ctx.message` (`MessageContext`), `ctx.data`, `ctx.source` (`OrderHandler.create`) and `ctx.transport` (`default`, or the named transport):
 
-| `ctx.kind` | `@Catch` returns a value | `@Catch` returns nothing, or throws |
-|:--|:--|:--|
-| `'message'` (`@MessagePattern`) | The value **is the reply** — the caller's `send()` resolves with it | The original error reaches the transport — `ok:false` reply, caller gets `REMOTE_ERROR` |
-| `'event'` (`@EventPattern`) | **Ignored**, with a warning naming the `@Catch` — the original error still reaches the transport | The original error reaches the transport |
+| `ctx.kind` | `@Catch` returns a value (not a `Response`) | `@Catch` returns a `Response` | `@Catch` returns `undefined` (nothing), or throws |
+|:--|:--|:--|:--|
+| `'message'` (`@MessagePattern`) | The value **is the reply, delivered as a success** — the caller's `send()` resolves with it | **Declined**, with a warning naming the `@Catch` and the `@MessagePattern` — the original error reaches the transport, caller gets `REMOTE_ERROR` | The original error reaches the transport — `ok:false` reply, caller gets `REMOTE_ERROR` |
+| `'event'` (`@EventPattern`) | **Ignored**, with a warning naming the `@Catch` — the original error still reaches the transport | Same as a value | The original error reaches the transport |
+
+A `@MessagePattern` reply from a `@Catch` is always a **successful** reply, whatever it contains: `{ ok: false, code: 'ORDER_NOT_FOUND' }` below resolves the caller's `send()` — no `REMOTE_ERROR` — so the caller has to read the payload to see the failure. `null` is a value too and becomes the reply. A `Response` is an HTTP answer, never a message reply, which is why it is declined. To let the caller see the failure as `REMOTE_ERROR`, return `undefined`.
 
 `@EventPattern` is **observe-only**: whatever the `@Catch` does, the event is not acknowledged, so it is redelivered up to `maxRetries` and then dead-lettered exactly as without a handler. Alert or count there; to swallow a poison event deliberately, catch inside the handler and return.
 
@@ -281,7 +283,7 @@ A throwing `@MessagePattern` / `@EventPattern` handler is offered to the applica
 @Catch(OrderNotFoundError)
 public orderMissing(error: OrderNotFoundError, ctx: ExceptionContext<Context>) {
   if (ctx.scope === 'microservice' && ctx.kind === 'message') {
-    return { ok: false, code: 'ORDER_NOT_FOUND' };            // becomes the RPC reply
+    return { ok: false, code: 'ORDER_NOT_FOUND' };            // successful reply: send() resolves with it
   }
   if (ctx.scope !== 'http') return;
   return ctx.context.send({ error: error.message }, 404);
