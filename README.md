@@ -32,7 +32,7 @@ On every framework/package release:
 3. Grep the docs for new `:::warning Upgrading` / "New in 0.x" blocks — they are a ready-made diff of what the skill must change.
 4. Re-run the eval prompts (CRUD scaffold, WebSocket namespace, createTestApp test, pitfall probe) in a fresh agent session and type-check the output against the published packages.
 5. Diff `@asenajs/asena`'s `package.json` `exports` field against the import cheatsheet — and diff the reference files' import statements against it too, not just SKILL.md.
-6. Diff the deliberately duplicated snippets (bootstrap, middleware, validator, `onError`) between SKILL.md and the references — they must stay semantically identical.
+6. Diff the deliberately duplicated snippets (bootstrap, middleware, validator, the `@ExceptionHandler` class) between SKILL.md and the references — they must stay semantically identical.
 7. Diff the llms.txt page list — added/removed pages mean new/removed reference sections.
 8. Bump the sync line above and the `version` field in the SKILL.md frontmatter.
 

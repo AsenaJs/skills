@@ -1,7 +1,7 @@
 ---
 name: asena
-description: Expert guidance for building AsenaJS applications - the Bun IoC web framework with Spring Boot-style decorators and field-based dependency injection. Use when creating or modifying AsenaJS projects or any code importing @asenajs packages - controllers and routing, services, middleware, validation (route context contracts, Zod validators), authentication and sessions, WebSocket namespaces, microservices over Redis Streams or Kafka, Redis caching, events, cron tasks, static files, Drizzle repositories, OpenAPI, OpenTelemetry, testing with mockComponent/createTestApp/createWebTest, or the asena CLI. Triggers - asena, asenajs, Context.define, AsenaServerFactory, createErgenecoreAdapter, createHonoAdapter, ergenecore, hono-adapter, asena-auth, @Controller, @Service, @Inject, @Value, @OnStart, @Protected, @Auth, @BetterAuth, AuthGuard, authComponents, requireAuthSession, @WebSocket, @MessagePattern, @StaticServe, @FrontendController, AsenaLogger, ulak, asena-config, asena doctor.
-version: 0.4.0
+description: Expert guidance for building AsenaJS applications - the Bun IoC web framework with Spring Boot-style decorators and field-based dependency injection. Use when creating or modifying AsenaJS projects or any code importing @asenajs packages - controllers and routing, services, middleware, validation (route context contracts, Zod validators), error handling (exception handlers, HttpException), authentication and sessions, WebSocket namespaces, microservices over Redis Streams or Kafka, Redis caching, events, cron tasks, static files, Drizzle repositories, OpenAPI, OpenTelemetry, testing with mockComponent/createTestApp/createWebTest, or the asena CLI. Triggers - asena, asenajs, Context.define, AsenaServerFactory, createErgenecoreAdapter, createHonoAdapter, ergenecore, hono-adapter, asena-auth, @Controller, @Service, @Inject, @Value, @OnStart, @ExceptionHandler, @Catch, @NotFound, HttpException, @Protected, @Auth, @BetterAuth, AuthGuard, authComponents, requireAuthSession, @WebSocket, @MessagePattern, @StaticServe, @FrontendController, AsenaLogger, ulak, asena-config, asena doctor.
+version: 0.5.0
 license: MIT
 ---
 
@@ -28,6 +28,8 @@ Package versions are NOT aligned — do not assume one version number across pac
 | Logger | `@asenajs/asena-logger` | 3.0.1 | — |
 
 Both adapters and `asena-openapi` peer `@asenajs/asena` `^0.12.0`; `asena-auth` peers `^0.12.2` (its docs require ergenecore 5.0.2+ or hono-adapter 5.0.3+), is adapter-agnostic, and ships a `@asenajs/asena-auth/testing` subpath; the other add-ons (redis, kafka, otel, drizzle, logger) peer `^0.11.0 || ^0.12.0`. `reflect-metadata` comes in through core. `asena-cli` 0.11.0 depends on `@asenajs/asena` `^0.11.0` (0.11.1 and later have no core dependency): on a 0.12 project it nests a second copy at `node_modules/@asenajs/asena-cli/node_modules/@asenajs/asena` that app code never resolves but `asena doctor`'s `duplicate-packages` check reports — upgrade the CLI to remove it. Every package requires **Bun >= 1.4.0**. There is no Node.js support — both adapters bind to `Bun.serve()`.
+
+Error handling follows `@asenajs/asena` **0.13.0**: `@ExceptionHandler` / `@Catch` / `@NotFound`, the `@asenajs/asena/exception` subpath and the ready-made status exceptions (`NotFoundException`, …) need core 0.13.0; `@Config.onError` / `onNotFound` are deprecated in 0.13.0 and removed in 1.0.
 
 Run `asena doctor` in an existing project to see the installed versions and whether any peer range is unsatisfied.
 
@@ -107,10 +109,11 @@ All **core** decorators come from `@asenajs/asena` subpaths. Only `Context` (typ
 | Import from | Symbols |
 |---|---|
 | `@asenajs/asena` | `AsenaServerFactory`, `AsenaServer`, `LifecycleState` |
-| `@asenajs/asena/decorators` | `Controller`, `Service`, `Middleware`, `Config`, `WebSocket`, `Schedule`, `EventService`, `MessageController`, `FrontendController`, `PostProcessor`, `StaticServe`, `Override`, `Component` (also re-exported here) |
+| `@asenajs/asena/decorators` | `Controller`, `Service`, `Middleware`, `Config`, `ExceptionHandler`, `WebSocket`, `Schedule`, `EventService`, `MessageController`, `FrontendController`, `PostProcessor`, `StaticServe`, `Override`, `Component` (also re-exported here) |
 | `@asenajs/asena/decorators/http` | `Get`, `Post`, `Put`, `Patch`, `Delete`, `Head`, `Options`, `All`, `Route`, `Page` |
 | `@asenajs/asena/decorators/ioc` | `Inject`, `Value`, `Strategy`, `Implements`, `OnStart`, `OnStop`, `Component`, `Scope` |
-| `@asenajs/asena/adapter` | `HttpException`, `isHttpException`, `isValidationError`, adapter SPI types |
+| `@asenajs/asena/exception` | `Catch`, `NotFound`, `ExceptionContext` (type) and its scope types |
+| `@asenajs/asena/adapter` | `HttpException`, status exceptions (`BadRequestException`, `UnauthorizedException`, `ForbiddenException`, `NotFoundException`, `ConflictException`, …), `ContractValidationError`, `isHttpException`, `isValidationError`, `HttpExceptionLike`, `NotFoundRequest`, adapter SPI types |
 | `@asenajs/asena/auth` | Auth **contract** only: `AsenaAuthProvider`, `AuthUser`, `AuthSession`, `Protected`, `Public`, `Roles`, `getAuthSession`, `requireAuthSession` (core never enforces the markers — `@asenajs/asena-auth` does; see pitfalls and `references/auth.md`) |
 | `@asenajs/asena/web-socket` | `AsenaWebSocketService`, `Socket` (type; alias of `AsenaSocket`) |
 | `@asenajs/asena/microservice` | `MessagePattern`, `EventPattern`, `InMemoryTransport`, transport SPI |
@@ -123,7 +126,7 @@ All **core** decorators come from `@asenajs/asena` subpaths. Only `Context` (typ
 | `@asenajs/asena/middleware` | `AsenaMiddlewareService`, `AsenaValidationService` (framework base abstractions — app code normally extends the ADAPTER's classes instead) |
 | `@asenajs/asena/logger` | `ServerLogger` (interface) |
 | `@asenajs/asena/ioc/types` | `ICoreServiceNames`, `ComponentPostProcessor`, decorator param types |
-| adapter package | `Context` (type and value — `Context.define()`), `MiddlewareService`, `ValidationService`, `ConfigService`, built-in middlewares (`CorsMiddleware`, `RateLimiterMiddleware`, `WebSocketOriginMiddleware`, …) |
+| adapter package | `Context` (type and value — `Context.define()`), `MiddlewareService`, `ValidationService`, `ConfigService`, `ValidationError` (the validator-class failure), built-in middlewares (`CorsMiddleware`, `RateLimiterMiddleware`, `WebSocketOriginMiddleware`, …) |
 
 **Never** import `Controller`/`Get`/`Inject` from the adapter package, and never import `Context` from the core package.
 
@@ -199,7 +202,7 @@ import { MiddlewareService, type Context } from '@asenajs/ergenecore';
 @Middleware()
 export class AuthMiddleware extends MiddlewareService {
   async handle(context: Context, next: () => Promise<void>): Promise<any> {
-    // reject: throw HttpException. pass: await next()
+    // reject: throw an HttpException (e.g. UnauthorizedException). pass: await next()
     await next();
   }
 }
@@ -253,28 +256,64 @@ export class CreateUserValidator extends ValidationService {
 }
 ```
 
-Attach via the route option: `@Post({ path: '/', validator: CreateUserValidator })`. A route uses a contract **or** a `validator`, never both (boot fails). Validator schema factories (`json()`, …) run **once per route at startup** by default; set `validatorCache: false` on the route when a factory must rebuild its schema per request. Once an `onError` handler exists, validation failures from either style reach it as `ValidationError` — match with `isValidationError()`.
+Attach via the route option: `@Post({ path: '/', validator: CreateUserValidator })`. A route uses a contract **or** a `validator`, never both (boot fails). Validator schema factories (`json()`, …) run **once per route at startup** by default; set `validatorCache: false` on the route when a factory must rebuild its schema per request. A validation failure throws a 400 `HttpException` subclass — `ContractValidationError` for a contract, the adapter's `ValidationError` for a validator class — that reaches your `@Catch(HttpException)` (below); match it with `isValidationError()`.
 
-## Server config and errors
+## Server config
 
-One `@Config` class per app, `extends ConfigService` (adapter import). Available methods: `serveOptions()`, `onError(error, context)`, `onNotFound()`, `globalMiddlewares()`, `transport()`.
+One `@Config` class per app, `extends ConfigService` (adapter import). Methods: `serveOptions()`, `globalMiddlewares()`, `transport()`. Its `onError()` / `onNotFound()` are **deprecated (removed in 1.0)** — never write new code against them; error handling lives in an `@ExceptionHandler` class.
+
+## Error handling
+
+An `@ExceptionHandler` class is an ordinary IoC component (`@Inject` works). Its `@Catch(...types)` methods answer thrown errors; a `@NotFound()` method answers unmatched routes:
 
 ```typescript
-import { Config } from '@asenajs/asena/decorators';
-import { isHttpException } from '@asenajs/asena/adapter';
-import { ConfigService, type Context } from '@asenajs/ergenecore';
+// src/exceptions/ApiExceptionHandler.ts
+import { ExceptionHandler } from '@asenajs/asena/decorators';
+import { Inject } from '@asenajs/asena/decorators/ioc';
+import { Catch, NotFound, type ExceptionContext } from '@asenajs/asena/exception';
+import { HttpException, isValidationError, type HttpExceptionLike, type NotFoundRequest } from '@asenajs/asena/adapter';
+import { ICoreServiceNames } from '@asenajs/asena/ioc/types';
+import type { ServerLogger } from '@asenajs/asena/logger';
+import { type Context } from '@asenajs/ergenecore'; // on Hono: from '@asenajs/hono-adapter'
 
-@Config()
-export class ServerConfig extends ConfigService {
-  public onError(error: Error, context: Context) {
-    if (isHttpException(error)) return error.getResponse();
-    return context.send({ message: 'Internal server error' }, 500);
+@ExceptionHandler()
+export class ApiExceptionHandler {
+  @Inject(ICoreServiceNames.SERVER_LOGGER)
+  private logger!: ServerLogger;
+
+  @Catch(HttpException)
+  public http(error: HttpExceptionLike, ctx: ExceptionContext<Context>) {
+    if (ctx.scope !== 'http') return;
+
+    if (isValidationError(error)) {
+      const errors = error.issues.map((i) => ({ field: i.path.join('.'), message: i.message }));
+      return ctx.context.send({ error: 'Validation failed', errors }, 400);
+    }
+
+    // error.message is the body already flattened to a string — don't re-wrap objects
+    return error.getResponse?.() ?? ctx.context.send({ error: error.message }, error.status);
+  }
+
+  @Catch()
+  public fallback(error: unknown, ctx: ExceptionContext<Context>) {
+    this.logger.error('Unhandled error', error);
+    if (ctx.scope !== 'http') return;
+    return ctx.context.send({ error: 'Internal Server Error' }, 500);
+  }
+
+  @NotFound()
+  public missing(context: Context, request: NotFoundRequest) {
+    return context.send({ error: 'Not Found', path: request.path }, 404);
   }
 }
 ```
 
-- Throw `HttpException` from `@asenajs/asena/adapter` — it works on both adapters: `throw new HttpException(404, { message: 'User not found' })`.
-- **Always** match exceptions with `isHttpException()`; **never** `instanceof HttpException` (duplicate module copies silently break instanceof — see pitfalls).
+- **Most specific wins**: the thrown value's class chain is walked upward — `@Catch(NotFoundException)` beats `@Catch(HttpException)` beats `@Catch(Error)`. One `@Catch` per exception type, one `@Catch()` catch-all and one `@NotFound()` per application; a duplicate fails the boot.
+- `@Catch()` (catch-all) is not `@Catch(Error)`: only the catch-all receives non-`Error` throws (`throw 'boom'`) — type its parameter `unknown`.
+- **Chain**: `@Catch` → deprecated `@Config.onError` → adapter default (`@NotFound()` → `@Config.onNotFound` → adapter 404). Returning nothing **declines** to the next link; on HTTP a non-`Response` value also declines (logged as an error); a handler that throws is logged and declines — the original error continues.
+- **Scopes** (`ctx.scope`): `'http'`; `'microservice'` — for `@MessagePattern` (`kind: 'message'`) a returned value becomes the reply; `'event'` (`@On`) and `@EventPattern` (`kind: 'event'`) are **observe-only** — the original failure continues (retry/DLQ, default error log) and a returned value is ignored with a warning. Always narrow on `ctx.scope` before touching `ctx.context`.
+- Throw `HttpException` or a ready-made status exception from `@asenajs/asena/adapter` — works on both adapters: `throw new NotFoundException({ error: 'User not found' })`, `throw new HttpException(429, 'Too Many Requests')`.
+- **Always** test exceptions with `isHttpException()` inside a handler; **never** `instanceof HttpException` (duplicate module copies silently break instanceof — see pitfalls). `@Catch(HttpException)` uses the same brand.
 - On the Hono adapter, if you need Hono's `HTTPException`, import it from `@asenajs/hono-adapter` — **never** from `hono/http-exception`.
 - Don't re-wrap `error.message` that is already a JSON string — double-encoding trap.
 
@@ -334,7 +373,11 @@ Output paths and class-name suffixes come from `asena-config.ts` — see `refere
 - **Throwing in `@OnStart`** aborts boot by design — don't "fix" it by swallowing errors; fix the cause or move non-critical work out.
 - **`ulak.send`/`ulak.emit` inside `@OnStart`** throws `NO_TRANSPORT` — the transport isn't connected yet; defer the first publish until after startup.
 - **`ws.publish()` excludes the sender** — send to the sender explicitly with `ws.send()`. Rooms are not enumerable — keep your own registry if you need a member list.
-- **Validation errors bypass your controller** — they surface in `onError` as `ValidationError` once a handler exists; match with `isValidationError()`, don't expect them in the route body.
+- **Validation errors bypass your controller** — they reach `@Catch(HttpException)` (or a `@Catch(ContractValidationError, ValidationError)`); match with `isValidationError()`, don't expect them in the route body.
+- **A catch-all that always answers 500** — `@Catch()` also receives `ValidationError` and `HttpException` when no narrower `@Catch` claims them, turning every 400/401/404 into a 500. Pair it with `@Catch(HttpException)`, or return nothing for `isHttpException(error)`.
+- **A `@Catch` answering in an event scope** — returning a value for an `@On` or `@EventPattern` failure does nothing (a warning is logged); the failure still retries / dead-letters / logs. Recover inside the event handler itself if the event must not fail.
+- **A routing 404 is not an error** — an unmatched route never reaches `@Catch`, not even the catch-all; answer it with `@NotFound()`. A missing *record* is a throw (`NotFoundException`).
+- **A `@Catch` answer is not logged** — once a handler returns a `Response`, the adapter skips its own error log too. Log inside the handler (unexpected errors especially).
 - **Contract class erased to a type** — `import type { CreateUserContext }` (or `emitDecoratorMetadata` off) leaves no runtime metadata: the route registers **without validation** and `context.input` throws. Import the contract class as a value; also never read `context.input` in middleware, the constructor or a field initializer — it exists only once validation finished.
 - **Auth markers are inert on their own** — `@Protected` / `@Public` / `@Roles` from `@asenajs/asena/auth` only record metadata; core never enforces them. Without an auth implementation that reads them, every route stays public. Don't treat the decorator as protection. Fix: install `@asenajs/asena-auth`, register a provider (`@Auth` or `@BetterAuth`) and pass `imports: [...authComponents]` to `AsenaServerFactory.create()` — its `AuthGuard` enforces the marks (`references/auth.md`). `asena doctor`'s `auth-enforcement` check fails when the marks are imported but no guard is. On a `@WebSocket` class the marks are ignored even then — use `AuthWebSocketMiddleware`.
 - **Rate limiter behind a proxy** — since adapter 5.0.0 `RateLimiterMiddleware` keys on the connecting peer and ignores `X-Forwarded-For` unless `trustProxy` is set. Behind a reverse proxy, without `trustProxy` every client shares the proxy's one bucket.
@@ -355,7 +398,7 @@ Read the reference before writing code in its area:
 | `@Value`, `imports`, scopes, `@Strategy`, lifecycle, shutdown/signals, `server.resolve()`, inheritance, `@PostProcessor` | `references/dependency-injection-and-lifecycle.md` |
 | CORS, rate limiting, auth middleware, route context contracts, Zod validators, `validatorCache` | `references/middleware-and-validation.md` |
 | Authentication: `@Auth`, `@BetterAuth`, `@Protected`/`@Roles` enforcement, sessions, Bearer/WebSocket tokens, `TestAuthProvider` | `references/auth.md` |
-| `@Config`, `HttpException`, shutdown, deployment | `references/configuration-and-errors.md` |
+| `@Config`, `@ExceptionHandler` / `@Catch` / `@NotFound`, `HttpException` and status exceptions, validation failures, shutdown, deployment | `references/configuration-and-errors.md` |
 | WebSocket namespaces, rooms, multi-pod, Ulak broker | `references/websocket-and-ulak.md` |
 | In-process events (`@On`), cron (`@Schedule`) | `references/events-and-scheduling.md` |
 | `@MessagePattern`, Redis Streams, Kafka (client + transport), headless services | `references/microservices.md` |
