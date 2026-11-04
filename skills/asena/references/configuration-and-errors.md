@@ -211,7 +211,7 @@ export class ApiExceptionHandler {
 
 - `ExceptionHandler` comes from `@asenajs/asena/decorators`; `Catch`, `NotFound` and the `ExceptionContext` types from `@asenajs/asena/exception`.
 - The class is an ordinary IoC component: found by the component scan (hand it to `imports` when it ships in a package), and `@Inject` works in it.
-- Declaring one changes nothing until a `@Catch` matches — with no `@Catch` at all the adapter defaults answer exactly as before any handler existed.
+- Declaring one changes nothing until a `@Catch` matches — an error no `@Catch` matches is answered by the next link of the chain, exactly as with no handler class at all.
 - **Several `@ExceptionHandler` classes may exist** — split by domain (`OrderExceptionHandler`, `PaymentExceptionHandler`); their methods merge into one resolution table.
 - One `@Catch` may list several types: `@Catch(OrderNotFoundError, CustomerNotFoundError)`. Abstract base classes work: `@Catch(DomainError)` receives every subclass.
 - `@Catch` and `@NotFound` methods inherited from a base class are registered; inherited `@Catch` methods are named in a boot log line. Two handler classes sharing a base with a `@Catch` therefore collide (duplicate type).
