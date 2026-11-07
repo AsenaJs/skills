@@ -358,6 +358,7 @@ await app.get('/users').expectStatus(200).expectJson([{ id: '1' }]);
 |---|---|
 | `asena create [name] --adapter=<hono\|ergenecore>` | Scaffold a project |
 | `asena generate controller\|service\|middleware\|validator\|config\|exception-handler\|websocket` (`asena g c\|s\|m\|v\|config\|eh\|ws`) | Generate a component |
+| `asena console` | Run the app in development with a browser console: component graph, runtime, endpoint tester, requests, messaging, config, exceptions. Needs core 0.13+; refuses `NODE_ENV=production` |
 | `asena build` | Production bundle → `dist/index.asena.js`. Does NOT rewrite your entry file; a hand-written `components:` array is yours and wins |
 | `asena init` | Create `asena-config.ts` |
 | `asena doctor` | Read-only project check (decorator flags, duplicate copies, peer ranges, minify settings, auth wiring); exit 1 on failure |
@@ -406,7 +407,7 @@ Read the reference before writing code in its area:
 | Logging, OpenTelemetry tracing | `references/observability.md` |
 | OpenAPI generation (validators or contracts), Swagger UI / Scalar docs page | `references/openapi.md` |
 | Unit/web/full-app tests | `references/testing.md` |
-| Scaffolding, generate, build config, suffixes, `asena doctor` | `references/cli.md` |
+| Scaffolding, generate, build config, suffixes, `asena doctor`, `asena console` | `references/cli.md` |
 | Adapter choice, built-in middleware, Hono migration | `references/adapters.md` |
 
 ## Full documentation lookup
