@@ -67,7 +67,8 @@ Index of the full official documentation. Fetch any page as raw markdown from it
 |---|---|---|
 | CLI Overview | https://asena.sh/raw/cli/overview.md | Scaffolding, code generation, dev server, bundling |
 | CLI Installation | https://asena.sh/raw/cli/installation.md | Global install with Bun, verification |
-| CLI Commands | https://asena.sh/raw/cli/commands.md | create, generate, dev start, build, init, doctor, shortcuts |
+| CLI Commands | https://asena.sh/raw/cli/commands.md | create, generate, dev start, console, build, init, doctor, shortcuts |
+| CLI Console | https://asena.sh/raw/cli/console.md | asena console: options, the seven panels, Focus and Full views, security model |
 | CLI Configuration | https://asena.sh/raw/cli/configuration.md | asena-config.ts full reference |
 | Suffix Configuration | https://asena.sh/raw/cli/suffix-configuration.md | Component naming-convention customization |
 | CLI Examples | https://asena.sh/raw/cli/examples.md | Step-by-step project tutorial |
