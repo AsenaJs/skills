@@ -1,7 +1,7 @@
 ---
 name: asena
-description: Expert guidance for building AsenaJS applications - the Bun IoC web framework with Spring Boot-style decorators and field-based dependency injection. Use when creating or modifying AsenaJS projects or any code importing @asenajs packages - controllers and routing, services, middleware, validation (route context contracts, Zod validators), authentication and sessions, WebSocket namespaces, microservices over Redis Streams or Kafka, Redis caching, events, cron tasks, static files, Drizzle repositories, OpenAPI, OpenTelemetry, testing with mockComponent/createTestApp/createWebTest, or the asena CLI. Triggers - asena, asenajs, Context.define, AsenaServerFactory, createErgenecoreAdapter, createHonoAdapter, ergenecore, hono-adapter, asena-auth, @Controller, @Service, @Inject, @Value, @OnStart, @Protected, @Auth, @BetterAuth, AuthGuard, authComponents, requireAuthSession, @WebSocket, @MessagePattern, @StaticServe, @FrontendController, AsenaLogger, ulak, asena-config, asena doctor.
-version: 0.4.0
+description: Expert guidance for building AsenaJS applications - the Bun IoC web framework with Spring Boot-style decorators and field-based dependency injection. Use when working on AsenaJS projects or any code importing @asenajs packages - controllers and routing, services, middleware, validation (route context contracts, Zod validators), authentication and sessions, WebSocket namespaces, microservices over Redis Streams or Kafka, Redis caching, events, cron, static files, Drizzle repositories, OpenAPI, OpenTelemetry, testing with mockComponent/createTestApp/createWebTest, or the asena CLI. Triggers - asena, asenajs, Context.define, AsenaServerFactory, createErgenecoreAdapter, createHonoAdapter, ergenecore, hono-adapter, asena-auth, @Controller, @Service, @Inject, @Value, @OnStart, @Protected, @Auth, @BetterAuth, AuthGuard, authComponents, requireAuthSession, @WebSocket, @MessagePattern, @Cacheable, @CachePut, @CacheEvict, @RedisCache, @StaticServe, @FrontendController, AsenaLogger, ulak, asena-config, asena doctor.
+version: 0.5.0
 license: MIT
 ---
 
@@ -11,7 +11,7 @@ AsenaJS is a decorator-based IoC web framework that runs ONLY on Bun. It looks l
 
 ## Version matrix
 
-Package versions are NOT aligned — do not assume one version number across packages. As of this skill's sync (2026-11-01, the asena-auth 1.0.0 release). If an installed package resolves lower than the table shows, the behaviour this file describes for it may not apply — check before relying on it.
+Package versions are NOT aligned — do not assume one version number across packages. As of this skill's sync (2026-11-01, the asena-auth 1.0.0 release; `asena-redis` 2026-11-07). If an installed package resolves lower than the table shows, the behaviour this file describes for it may not apply — check before relying on it.
 
 | Package | npm | Version | Peer deps |
 |---|---|---|---|
@@ -20,7 +20,7 @@ Package versions are NOT aligned — do not assume one version number across pac
 | Hono adapter | `@asenajs/hono-adapter` | 5.0.3 | `hono`, `zod`, core `^0.12.0` |
 | Ergenecore adapter (native Bun) | `@asenajs/ergenecore` | 5.0.2 | `zod`, core `^0.12.0` |
 | Auth (sessions, Better Auth, route guards) | `@asenajs/asena-auth` | 1.0.0 | core `^0.12.2`; `better-auth` optional (Better Auth provider only) |
-| Redis (cache + transports) | `@asenajs/asena-redis` | 4.0.1 | `redis` |
+| Redis (cache + transports) | `@asenajs/asena-redis` | 4.1.0 | `redis` |
 | Kafka (client + transport) | `@asenajs/asena-kafka` | 4.0.1 | `kafkajs` |
 | OpenAPI | `@asenajs/asena-openapi` | 3.2.0 | `zod`, core `^0.12.0` |
 | OpenTelemetry | `@asenajs/asena-otel` | 3.0.1 | `@opentelemetry/*` SDK family |
@@ -102,7 +102,7 @@ Rules:
 
 ## Import cheatsheet
 
-All **core** decorators come from `@asenajs/asena` subpaths. Only `Context` (type, and the `Context.define()` value), the middleware/validator/config base classes, and adapter built-ins come from the adapter package (`@asenajs/ergenecore` or `@asenajs/hono-adapter`). Add-on packages export their own decorators: `@Database`/`@Repository`/`@Drizzle`/`@Transaction` (`@asenajs/asena-drizzle`), `@Redis`/`@RedisCache` (`@asenajs/asena-redis`), `@Kafka` (`@asenajs/asena-kafka`), `@Otel` (`@asenajs/asena-otel`), `@Hidden` (`@asenajs/asena-openapi`), `@Auth`/`@BetterAuth` (`@asenajs/asena-auth`).
+All **core** decorators come from `@asenajs/asena` subpaths. Only `Context` (type, and the `Context.define()` value), the middleware/validator/config base classes, and adapter built-ins come from the adapter package (`@asenajs/ergenecore` or `@asenajs/hono-adapter`). Add-on packages export their own decorators: `@Database`/`@Repository`/`@Drizzle`/`@Transaction` (`@asenajs/asena-drizzle`), `@Redis`/`@RedisCache`/`@Cacheable`/`@CachePut`/`@CacheEvict`/`@CacheConfig` (`@asenajs/asena-redis`), `@Kafka` (`@asenajs/asena-kafka`), `@Otel` (`@asenajs/asena-otel`), `@Hidden` (`@asenajs/asena-openapi`), `@Auth`/`@BetterAuth` (`@asenajs/asena-auth`).
 
 | Import from | Symbols |
 |---|---|
@@ -342,7 +342,7 @@ Output paths and class-name suffixes come from `asena-config.ts` — see `refere
 - **Validator factory reading request-time state** — with the default `validatorCache: true`, `json()`/`query()` run once at startup; state read inside the factory is frozen. Read mutable state in a `refine`/hook, or set `validatorCache: false`.
 - **Duplicate routes fail the boot** — `/x` and `/x/` for the same method (or two controllers resolving to the same canonical path) now throw at startup instead of one silently shadowing the other.
 - **Cross-adapter divergences were closed in adapter 4.0.0** — `getQuery` returns `undefined` for an absent key and `setResponseHeader` replaces on BOTH adapters, and both have `appendResponseHeader`. On an adapter `3.x` project the old split still applies (ergenecore `''` / hono `undefined`; hono's `setResponseHeader` appends), so check the installed version before relying on either. Prefer `?? default` over `|| default` for `getQuery`.
-- **The Redis cache decorators are silently inert** until a `@RedisCache` class extending `CachePostProcessor` exists in `src/` — methods still run, Redis is just never touched. `@Transaction` used to fail the same way; since asena-drizzle 3.1 it **fails the boot** instead (`@Transaction methods are not wrapped: ...`), which also fires when a transactional class sits inside a post-processor's dependency closure.
+- **The Redis cache decorators are silently inert** until a `@RedisCache` class extending `CachePostProcessor` is registered (source folder, or `imports` from a package) — methods still run, Redis is just never touched. `@Transaction` differs: an unwrapped method **fails the boot** (`@Transaction methods are not wrapped: ...`), which also fires when a transactional class sits inside a post-processor's dependency closure; a cached class there just stays uncached, with no error.
 - **A class in a PostProcessor's dependency closure is never post-processed** — Phase A constructs it before post-processing is active. Any decorator implemented by a processor silently stops applying to it. Keep processor dependencies minimal.
 
 ## Feature → reference routing
@@ -359,7 +359,7 @@ Read the reference before writing code in its area:
 | WebSocket namespaces, rooms, multi-pod, Ulak broker | `references/websocket-and-ulak.md` |
 | In-process events (`@On`), cron (`@Schedule`) | `references/events-and-scheduling.md` |
 | `@MessagePattern`, Redis Streams, Kafka (client + transport), headless services | `references/microservices.md` |
-| Drizzle repositories, transactions, Redis caching | `references/database-and-caching.md` |
+| Drizzle repositories, transactions, Redis caching (`@Cacheable`, `@CachePut`, `@CacheEvict`, `@RedisCache`) | `references/database-and-caching.md` |
 | Logging, OpenTelemetry tracing | `references/observability.md` |
 | OpenAPI generation (validators or contracts), Swagger UI / Scalar docs page | `references/openapi.md` |
 | Unit/web/full-app tests | `references/testing.md` |
