@@ -311,7 +311,9 @@ const recent = await xrange(redis.client, 'orders', '-', '+', 10);
 
 ## Caching Decorators
 
-**Setup (required):** subclass `CachePostProcessor` inside your source folder; without it the cache decorators only record metadata and are **silently inert** (methods work, Redis is never touched).
+Requires `@asenajs/asena-redis` 4.1.0 or later.
+
+**Setup (required):** subclass `CachePostProcessor` under `@RedisCache` inside your source folder, or hand a subclass from a shared package to `AsenaServerFactory.create({ imports: [...] })`. Without it the cache decorators only record metadata and are **silently inert** (methods work, Redis is never touched).
 
 ```typescript
 // src/config/AppCache.ts
@@ -322,6 +324,7 @@ export class AppCache extends CachePostProcessor {}
 ```
 
 ```typescript
+import { Service } from '@asenajs/asena/decorators';
 import { Cacheable, CachePut, CacheEvict, CacheConfig } from '@asenajs/asena-redis';
 
 @Service()
@@ -352,27 +355,56 @@ export class UserService {
 
 Stacked decorators produce one wrapper with fixed order `evict(before) → read → method → write → evict(after)`. `@Cacheable` + `@CachePut` on the same method is rejected at boot.
 
+- A `@Cacheable` hit returns early, so a stacked `@CacheEvict` runs on a hit only with `beforeInvocation: true`.
+- A method holds one `@CacheEvict`: a second one on the same method silently replaces the first (the topmost wins).
+- Calls through `this` are cached too, because the wrapper is an own property of the instance — there is no Spring-style self-invocation gap.
+- Decorators are inherited: a subclass override with no decorator of its own is still cached under the base method's options.
+
 ### Options
 
-Resolution per option, nearest wins: `method option > @CacheConfig (class) > @RedisCache (application)`.
+Only `redis`, `prefix` and `ttl` cascade, each resolved on its own, nearest wins: `method option > @CacheConfig (class) > @RedisCache (application)`. The rest are per-method. A `ttl` set at a higher level cannot be cleared for one method (`ttl: undefined` falls through to it).
 
 | Option | Applies to | Meaning |
 |---|---|---|
-| `key` | all three | `(...args) => string`. Omitted → `` `${Class.name}.${method}:${JSON.stringify(args)}` `` |
-| `prefix` | all three | Key namespace joined with `:`; also the scope of `allEntries` |
-| `ttl` | `@Cacheable`, `@CachePut` | **Seconds.** Omitted = never expires |
+| `key` | all three | `(...args) => string`, non-empty. Omitted → `` `${Class.name}.${method}:${JSON.stringify(args)}` ``. The prefix goes in front either way |
+| `prefix` | all three | Key namespace joined with `:` (a trailing `:` is not doubled); also the scope of `allEntries`, where glob characters in it match literally |
+| `ttl` | `@Cacheable`, `@CachePut` | **Seconds**, a positive whole number. Omitted = never expires |
 | `redis` | all three | `@Redis` service name. Omit only when exactly one is registered |
-| `cacheNull` | `@Cacheable`, `@CachePut` | Store `null`/`undefined` results (default `true`) |
-| `allEntries` | `@CacheEvict` | SCAN-delete every key under the prefix; requires a prefix |
+| `cacheNull` | `@Cacheable`, `@CachePut` | Store `null`/`undefined` results (default `true`). When `false`, such a result writes nothing: `@Cacheable` re-runs next time, `@CachePut` leaves the previous entry in place |
+| `allEntries` | `@CacheEvict` | SCAN-delete every key under the prefix, including keys of other classes sharing it; requires a prefix; `key` is ignored |
 | `beforeInvocation` | `@CacheEvict` | Evict before the method (default `false`) |
 
-Key rules: the default key embeds `Class.name`, so an inherited `@Cacheable` caches **per subclass**, and minification changes every derived key — always supply an explicit `key` for anything long-lived. Key-generator parameters are not type-checked against the method's.
+Key rules:
 
-### Serialization, failure, limits
+- **`@CacheEvict` without `key` derives the default from its own method name**, so it never removes what a `@Cacheable` on another method stored. Give the pair the same explicit `key`.
+- The default key embeds `Class.name`, so an inherited `@Cacheable` caches **per subclass**, and minification changes every derived key — always supply an explicit `key` for anything long-lived.
+- With no prefix at any level, an explicit `key` is the raw Redis key, and two classes returning `id` collide. Set a prefix.
+- Key-generator parameters are not type-checked against the method's.
 
-- Values are stored as JSON: whatever survives `JSON.parse(JSON.stringify(x))`. `Date` → ISO string; `Map`/`Set` → `{}`; class instance → plain object; `undefined`/`null`/`0`/`''`/`false` preserved and distinguishable from a miss; circular/`BigInt` → returned to caller but the cache write is skipped with a warning.
-- **Runtime Redis failures fail open** (warning logged, method runs uncached). **Configuration mistakes fail fast at boot** (decorator on a non-method, `@Cacheable`+`@CachePut`, `allEntries` without prefix, non-positive `ttl`); a throwing `key` function propagates.
-- **Warning:** with more than one `@Redis` service and no `redis` option named, the error surfaces on the **first cached call**, not at boot — always name the service when multiple exist.
-- Wrapped methods always return a Promise (sync methods become async). Arrow-function class properties are not supported. `allEntries` SCAN is not a snapshot and only covers one node on Redis Cluster. No stampede protection — concurrent misses all run the method.
+### Serialization
+
+- Values are stored as JSON: whatever survives `JSON.parse(JSON.stringify(x))`. `Date` → ISO string; `Map`/`Set` → `{}`; class instance → plain object; function → `undefined`; `undefined`/`null`/`0`/`''`/`false` preserved and distinguishable from a miss; circular/`BigInt` → returned to caller but the cache write is skipped with a warning.
+- Each entry is an envelope, `{"v":<value>}`. `redis.get(key)` on a cached key returns the envelope, and a value written by hand under that key reads as a miss with a warning, then gets overwritten. Don't share keys between the decorators and manual `redis.set`.
+
+### Failure policy
+
+- **A rejected Redis command fails open:** warning logged, method runs uncached.
+- **A Redis outage does not reject by default.** With `enableOfflineQueue` on (the default), commands wait in the queue while the connection is down, so a cached method **waits with them**: about 30 s on the Bun adapter with default settings (until `maxRetries` is spent), then it fails open; on `node-redis` no reply came within 150 s. Set `enableOfflineQueue: false` on the `@Redis` service behind the cache to fail open at once.
+- **Configuration mistakes fail fast at boot:** decorator on a non-method, `@Cacheable`+`@CachePut`, `allEntries` without a prefix, a `ttl` that is not a positive whole number.
+- **Key errors propagate on the call:** a `key` function that throws or returns anything but a non-empty string, a default key over arguments `JSON.stringify` cannot serialize.
+- **Warning: the Redis service is picked on the first cache call, not at boot** — a post-processor sees the component graph mid-build and core has no later hook. No `@Redis` service, more than one with no `redis` option, or a name that does not resolve all throw there, and the error reaches the caller instead of failing open. `@CachePut` and an after-invocation `@CacheEvict` throw it **after** the method's side effects. Always name the service when multiple exist.
+
+### Limits
+
+- Wrapped methods always return a Promise (sync methods become async). Arrow-function class properties are not supported.
+- `allEntries` SCAN is not a snapshot (a key written during the walk can survive until its TTL) and only covers one node on Redis Cluster.
+- No stampede protection — concurrent misses all run the method.
+- A class in a post-processor's dependency closure stays uncached with no error; there is no boot guard like `@Transaction`'s.
+
+### Testing cached services
+
+- `mockComponent` does not post-process: the raw method runs, Redis is not involved.
+- `createTestApp` needs the `@RedisCache` class in `components` (nothing `@Inject`s it, so the closure walk never reaches it). Left out, the decorators stay inert, which is what most service tests want.
+- A plain-object double for the Redis service (`overrides: { AppRedis: double }`) fails the `AsenaRedisService` check, so with the `@RedisCache` class registered the first cache call throws. To test caching itself, run real Redis under a unique `prefix`.
 
 Deeper detail: `https://asena.sh/raw/packages/drizzle.md`, `https://asena.sh/raw/packages/redis.md`.
