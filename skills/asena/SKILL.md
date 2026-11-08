@@ -11,7 +11,7 @@ AsenaJS is a decorator-based IoC web framework that runs ONLY on Bun. It looks l
 
 ## Version matrix
 
-Package versions are NOT aligned — do not assume one version number across packages. As of this skill's sync (2026-11-01, the asena-auth 1.0.0 release; `asena-redis` 2026-11-07). If an installed package resolves lower than the table shows, the behaviour this file describes for it may not apply — check before relying on it.
+Package versions are NOT aligned — do not assume one version number across packages. As of this skill's sync (2026-11-01, the asena-auth 1.0.0 release). If an installed package resolves lower than the table shows, the behaviour this file describes for it may not apply — check before relying on it.
 
 | Package | npm | Version | Peer deps |
 |---|---|---|---|
