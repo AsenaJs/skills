@@ -103,7 +103,8 @@ export class UserService {
 ## Event Semantics and Rules
 
 - **Fire-and-forget:** `emit()` never waits, even for async handlers. There is no way to await handler completion — by design.
-- **Error isolation:** a throwing handler is caught and logged; other handlers and the emitter continue.
+- **Error isolation:** a throwing handler is caught and logged (`[EventDispatchService] Sync|Async error in handler for event "<name>"`); other handlers and the emitter continue.
+- **`@Catch` observes, it does not recover.** A matching `@Catch` in an `@ExceptionHandler` receives the failure with `ctx.scope === 'event'` (`ctx.event`, `ctx.data`, and `ctx.source` such as `UserEventService.handleCreated` — absent for a handler registered imperatively on the emitter). The default error line is logged regardless, and a value the `@Catch` returns is ignored with a warning. Use it to alert or count; to recover, catch inside the `@On` handler itself. See `configuration-and-errors.md`.
 - **No execution order guarantee** across handlers of one event. For sequencing, chain events: handler 1 emits the event handler 2 listens on.
 - **Keep handlers lightweight** — emit follow-up events (`email.send`, `report.generate`) instead of doing heavy work inline.
 - Handlers can emit further events (chains); `@On` handlers inherited from a base class are registered (see inheritance docs).
@@ -136,7 +137,7 @@ export interface AsenaSchedule {
 }
 ```
 
-If `execute()` throws, the framework catches and logs it; the schedule keeps running — one failure never stops future executions.
+If `execute()` throws, the framework catches and logs it; the schedule keeps running — one failure never stops future executions. A scheduled job is not an `@ExceptionHandler` scope: its failures never reach `@Catch`.
 
 **Note:** Cron expressions are validated with Bun's native `Bun.cron.parse()` **inside the decorator, at module import** — an invalid expression throws before `AsenaServerFactory.create()` is reached, so the server cannot start misconfigured. Nicknames (`@hourly`, `@daily`, `@weekly`, `@monthly`, `@yearly`) are accepted.
 

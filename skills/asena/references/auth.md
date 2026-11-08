@@ -25,7 +25,7 @@ bun add @asenajs/asena-auth               # native sessions
 bun add @asenajs/asena-auth better-auth   # plus the Better Auth provider
 ```
 
-Requires Bun >= 1.4.0. Peers `@asenajs/asena` `^0.12.2` and, optionally, `better-auth` `>=1.2.0 <2`; the docs require ergenecore 5.0.2+ or hono-adapter 5.0.3+. Zero runtime dependencies — tokens and password hashing use Bun built-ins, and the package never imports `better-auth`, so an app without that provider does not install it.
+Requires Bun >= 1.4.0. Peers `@asenajs/asena` `^0.12.2 || ^0.13.0` and, optionally, `better-auth` `>=1.2.0 <2`. On core 0.12 it needs ergenecore 5.0.2+ or hono-adapter 5.0.3+: logout deletes the session cookie with its attributes (ergenecore 5.0.2) and a re-issued session cookie survives an error response (hono-adapter 5.0.3). On core 0.13 the floor is ergenecore 5.1.0 or hono-adapter 5.2.0, the first releases that peer 0.13. Zero runtime dependencies — tokens and password hashing use Bun built-ins, and the package never imports `better-auth`, so an app without that provider does not install it.
 
 | Import from | Symbols |
 |---|---|
