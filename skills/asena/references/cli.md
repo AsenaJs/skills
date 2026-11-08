@@ -193,7 +193,7 @@ Focus and Full (Components):
 
 - **Default:** Focus when the app has more than 40 components, Full otherwise. A manual choice holds until the app crosses that limit or the page reloads.
 - **Focus** shows the selected component and its direct neighbours, in both directions. Clicking a neighbour moves the focus. More than 3 validators or core services collapse into one group node; clicking it expands the group. Search finds any component, and choosing a result moves the focus.
-- **Full** shows every component. On an app above the limit, core services and validators start hidden through the kind chips, the first fit follows the width with a 35% floor and is panned from there, and edges stay faint until a node is hovered or selected.
+- **Full** shows every component. On an app above the limit, core services and validators start hidden through the kind chips, nothing starts selected, the first fit follows the width with a 35% floor and is panned from there, and edges stay faint until a node is hovered or selected. A smaller app opens with its first controller selected.
 
 The WebSocket tester connects straight from the browser to the app, so it can send no custom headers or subprotocol: a namespace behind token auth rejects it.
 
