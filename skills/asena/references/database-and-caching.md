@@ -311,8 +311,6 @@ const recent = await xrange(redis.client, 'orders', '-', '+', 10);
 
 ## Caching Decorators
 
-Requires `@asenajs/asena-redis` 4.1.0 or later.
-
 **Setup (required):** subclass `CachePostProcessor` under `@RedisCache` inside your source folder, or hand a subclass from a shared package to `AsenaServerFactory.create({ imports: [...] })`. Without it the cache decorators only record metadata and are **silently inert** (methods work, Redis is never touched).
 
 ```typescript
@@ -362,13 +360,14 @@ Stacked decorators produce one wrapper with fixed order `evict(before) → read 
 
 ### Options
 
-Only `redis`, `prefix` and `ttl` cascade, each resolved on its own, nearest wins: `method option > @CacheConfig (class) > @RedisCache (application)`. The rest are per-method. A `ttl` set at a higher level cannot be cleared for one method (`ttl: undefined` falls through to it).
+Only `redis`, `prefix`, `ttl` and `timeout` cascade, each resolved on its own, nearest wins: `method option > @CacheConfig (class) > @RedisCache (application)`. The rest are per-method. A `ttl` set at a higher level cannot be cleared for one method (`ttl: undefined` falls through to it).
 
 | Option | Applies to | Meaning |
 |---|---|---|
 | `key` | all three | `(...args) => string`, non-empty. Omitted → `` `${Class.name}.${method}:${JSON.stringify(args)}` ``. The prefix goes in front either way |
 | `prefix` | all three | Key namespace joined with `:` (a trailing `:` is not doubled); also the scope of `allEntries`, where glob characters in it match literally |
 | `ttl` | `@Cacheable`, `@CachePut` | **Seconds**, a positive whole number. Omitted = never expires |
+| `timeout` | all three | Limit in **milliseconds** on each Redis command the cache sends, a positive number (default `500`). A command past it counts as failed, so the call fails open |
 | `redis` | all three | `@Redis` service name. Omit only when exactly one is registered |
 | `cacheNull` | `@Cacheable`, `@CachePut` | Store `null`/`undefined` results (default `true`). When `false`, such a result writes nothing: `@Cacheable` re-runs next time, `@CachePut` leaves the previous entry in place |
 | `allEntries` | `@CacheEvict` | SCAN-delete every key under the prefix, including keys of other classes sharing it; requires a prefix; `key` is ignored |
@@ -388,15 +387,17 @@ Key rules:
 
 ### Failure policy
 
-- **A rejected Redis command fails open:** warning logged, method runs uncached.
-- **A Redis outage does not reject by default.** With `enableOfflineQueue` on (the default), commands wait in the queue while the connection is down, so a cached method **waits with them**: about 30 s on the Bun adapter with default settings (until `maxRetries` is spent), then it fails open; on `node-redis` no reply came within 150 s. Set `enableOfflineQueue: false` on the `@Redis` service behind the cache to fail open at once.
-- **Configuration mistakes fail fast at boot:** decorator on a non-method, `@Cacheable`+`@CachePut`, `allEntries` without a prefix, a `ttl` that is not a positive whole number.
+- **Redis failures fail open:** a command that rejects, or does not answer within `timeout` (default 500 ms), logs one warning on the framework logger, and the call carries on uncached. A failed read runs the method and skips that call's write; a failed write or eviction still returns the method's result.
+- **The limit is per command:** each `GET`, `SET` and `DEL`, and each `SCAN` round and delete batch of an `allEntries` eviction, so a long sweep on a healthy server is not cut short. While Redis is down and the client queues commands (`enableOfflineQueue`, on by default), a cached call waits out the limit, then fails open.
+- **A timed-out command is not cancelled.** With the offline queue on, the client sends it when the connection returns: a late `SET` stores the value computed during the outage with a fresh TTL, and can overwrite a newer entry written after the reconnect, for example by another instance. `enableOfflineQueue: false` on the `@Redis` service makes commands reject at once while disconnected, so a call fails open without waiting and nothing is sent late; it applies to every command on that service, not only the cache's.
+- **Configuration mistakes fail fast at boot:** a decorator on a name that holds no function, `@Cacheable`+`@CachePut`, `allEntries` without a prefix, a `ttl` that is not a positive whole number, a `timeout` that is not a positive number.
 - **Key errors propagate on the call:** a `key` function that throws or returns anything but a non-empty string, a default key over arguments `JSON.stringify` cannot serialize.
-- **Warning: the Redis service is picked on the first cache call, not at boot** — a post-processor sees the component graph mid-build and core has no later hook. No `@Redis` service, more than one with no `redis` option, or a name that does not resolve all throw there, and the error reaches the caller instead of failing open. `@CachePut` and an after-invocation `@CacheEvict` throw it **after** the method's side effects. Always name the service when multiple exist.
+- **Warning: wiring mistakes surface on the first cache call, not at boot** — a post-processor sees the component graph mid-build and core has no later hook. No `@Redis` service, more than one with no `redis` option, a name that does not resolve, or a Redis service replaced by something that is not an `AsenaRedisService` (a plain double through `overrides`) all throw there, and the error reaches the caller instead of failing open. It is thrown before the method for `@Cacheable` and `@CacheEvict({ beforeInvocation: true })`, and **after** the method has run for `@CachePut` and `@CacheEvict`. Always name the service when multiple exist.
 
 ### Limits
 
-- Wrapped methods always return a Promise (sync methods become async). Arrow-function class properties are not supported.
+- Wrapped methods always return a Promise (sync methods become async).
+- The decorators are typed for methods, so TypeScript rejects them on an arrow-function property. Applied to one anyway (plain JavaScript, or Bun running without a type check), the property is wrapped and cached like a method and keeps its `this`.
 - `allEntries` SCAN is not a snapshot (a key written during the walk can survive until its TTL) and only covers one node on Redis Cluster.
 - No stampede protection — concurrent misses all run the method.
 - A class in a post-processor's dependency closure stays uncached with no error; there is no boot guard like `@Transaction`'s.
