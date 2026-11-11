@@ -367,6 +367,8 @@ Transports are taken down **after** `@OnStop` hooks (a hook can still publish) a
 await server.stop({ drainTimeout: 30_000 }); // 0.10.0+; the old boolean form still works
 ```
 
+A shutdown signal calls `stop()` for you: set the same window for it with `shutdown: { drainTimeout: 30_000 }` in `AsenaServerFactory.create()`.
+
 **Note:** `handlerTimeout` is not cancellation — the dispatch is rejected (entry stays un-ACKed for redelivery) but the handler function keeps running until it settles.
 
 ## InMemoryTransport (Testing)
