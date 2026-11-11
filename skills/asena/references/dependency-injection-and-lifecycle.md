@@ -305,12 +305,12 @@ const server = await AsenaServerFactory.create({
 
 A second signal during a signal-triggered shutdown exits immediately with `128 + signal number` (`130` for `SIGINT`, `143` for `SIGTERM`), also when another library listens for the same signal.
 
-A signal-triggered shutdown that fails ends the process with exit code `1`, with or without a file watcher. It fails when `stop()` rejects (an adapter or transport that will not close) or when an `@OnStop` hook throws, rejects or runs out of `shutdown.timeout`; each failure is logged, and the remaining hooks and teardown steps still run. A clean one exits `0`. An explicit `await server.stop()` never sets the exit code and never exits the process.
+A signal-triggered shutdown that fails ends the process with exit code `1`, with or without a file watcher. It fails when `stop()` rejects (an adapter or transport that will not close) or when an `@OnStop` hook throws, rejects or runs out of `shutdown.timeout`; each failure is logged, and the remaining hooks and teardown steps still run. A clean one exits `0`. A non-zero `process.exitCode` the application already set is kept in both cases, with or without a file watcher. An explicit `await server.stop()` never sets the exit code and never exits the process.
 
 How the process ends after the stop:
 
 - **Plain `bun`:** the signal leaves the process to the event loop. It exits when nothing holds it, and `forceExitAfter` bounds a leaked handle. After a failed shutdown core sets `process.exitCode = 1`, unless the application already set a non-zero code.
-- **`bun --hot` / `bun --watch`:** the file watcher holds the loop, so core calls `process.exit` itself once every `stop()` running in the process has settled (an explicit one on another server included), whatever `forceExitAfter` is. With no other listener on that signal it exits at once. With one, such as a telemetry exporter's own hook, it exits when the event loop empties (`beforeExit`) or `shutdown.timeout` ms (default `5000`) after the stops settled, whichever comes first.
+- **`bun --hot` / `bun --watch`:** the file watcher holds the loop, so core calls `process.exit` itself once every `stop()` running in the process has settled (an explicit one on another server included), whatever `forceExitAfter` is. It passes the application's non-zero `process.exitCode` on, and otherwise `1` after a failed shutdown and `0` after a clean one. With no other listener on that signal it exits at once. With one, such as a telemetry exporter's own hook, it exits when the event loop empties (`beforeExit`) or `shutdown.timeout` ms (default `5000`) after the stops settled, whichever comes first.
 
 ## keepAlive and Headless Workers
 

@@ -437,6 +437,6 @@ bun dist/index.asena.js  # run it
 ```
 
 - **Graceful shutdown is on by default**: `SIGTERM`/`SIGINT`/`SIGHUP` call `server.stop()` — new work stops, `@OnStop` hooks run while transports are still up, then everything releases in order. A second signal during the drain exits at once with `128 + signal number` (143 for `SIGTERM`).
-- **Exit code**: a signal-triggered shutdown exits `0` when clean and `1` when it failed — `stop()` rejected, or an `@OnStop` hook threw, rejected or timed out — so a supervisor or CI step sees the failure. An explicit `await server.stop()` leaves the exit code alone.
+- **Exit code**: a signal-triggered shutdown exits `0` when clean and `1` when it failed — `stop()` rejected, or an `@OnStop` hook threw, rejected or timed out — so a supervisor or CI step sees the failure. A non-zero `process.exitCode` the application set is kept either way, under `bun --hot` / `--watch` too. An explicit `await server.stop()` leaves the exit code alone.
 - **Probes**: pass `health: { port }` to `AsenaServerFactory.create()`; point the restart policy at `{path}/live` and the load balancer at `{path}/ready` (default path `/healthz`). Readiness answers `503` for the whole drain, pulling the instance from rotation while it finishes work.
 - Details: `https://asena.sh/raw/concepts/lifecycle.md`.
