@@ -50,9 +50,9 @@ serveOptions?(): AsenaServeOptions;
 globalMiddlewares?(): Promise<GlobalMiddlewareEntry[]> | GlobalMiddlewareEntry[];
 transport?(): WebSocketTransport | AsenaTransportConfig | Promise<...>;
 /** @deprecated Removed in 1.0 — use @Catch in an @ExceptionHandler class */
-onError?(error: Error, context: C): Response | Promise<Response>;
+onError?(error: Error, context: C): Response | undefined | Promise<Response | undefined>;
 /** @deprecated Removed in 1.0 — use @NotFound() in an @ExceptionHandler class */
-onNotFound?(context: C, request: NotFoundRequest): Response | Promise<Response>;
+onNotFound?(context: C, request: NotFoundRequest): Response | undefined | Promise<Response | undefined>;
 ```
 
 A `@Config` is a normal IoC component: `@Inject` works in it (logger, a Redis service for `transport()`). Error handling does not belong here — it lives in `@ExceptionHandler` classes (below).
@@ -299,7 +299,7 @@ Answers a request that matched **no route** — also a file `@StaticServe` canno
 
 ## Deprecated: onError() and onNotFound()
 
-`@Config.onError(error, context)` and `@Config.onNotFound(context, request)` are **deprecated and removed in 1.0**. Each logs a deprecation warning at boot. They remain the last link before the adapter default: `onError` runs only after no `@Catch` answered, `onNotFound` only after `@NotFound()` declined (or does not exist). Both are HTTP-only — in headless mode they are ignored with a warning.
+`@Config.onError(error, context)` and `@Config.onNotFound(context, request)` are **deprecated and removed in 1.0**. Each logs a deprecation warning at boot. They remain the last link before the adapter default: `onError` runs only after no `@Catch` answered, `onNotFound` only after `@NotFound()` declined (or does not exist). Both are HTTP-only — in headless mode they are ignored with a warning. Either hook declines by returning `undefined`, which its return type allows (no cast under strict TypeScript); the adapter default then answers.
 
 Never write new code against them. Use `@Catch` / `@NotFound()` in an `@ExceptionHandler` instead; when a project still has them, move their branches into `@Catch` methods.
 
