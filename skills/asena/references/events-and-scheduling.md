@@ -180,8 +180,9 @@ private cronRunner: CronRunner;
 | `getJobNames()` | `string[]` | Registered job names |
 | `registerJob(name, cron, fn)` | `void` | Register a job programmatically |
 | `startAll()` / `stopAll()` | `void` | Start/stop every registered job |
+| `runNow(name)` | `Promise<void>` | Run one job once, now, through the timed-run path (a failure is logged the same way, then rethrown); its schedule is untouched. Rejects for an unknown name, after `stopAll()`, and while that job is still running |
 | `clearJobs()` | `void` | Stop and drop all jobs |
 | `jobCount` | `number` | Registered job count |
 | `hasRunningJobs` | `boolean` | Any job **scheduled** (started, not stopped) — not "executing right now" |
 
-Lifecycle is automatic: jobs start when the server is ready — **after** every `@OnStart` has returned — and stop during graceful shutdown **before** any `@OnStop` runs (first step of `server.stop()` is "take no new work"). A job already executing at shutdown is not cancelled; `stopAll()` only unschedules future runs.
+Lifecycle is automatic: jobs start when the server is ready — **after** every `@OnStart` has returned — and stop during graceful shutdown **before** any `@OnStop` runs (first step of `server.stop()` is "take no new work"). A job already executing at shutdown is not cancelled; `stopAll()` only unschedules future runs. A job never overlaps itself: a tick that arrives while the previous run has not finished is skipped with a warning (`[Schedule] Skipped "<name>": the previous run has not finished`).

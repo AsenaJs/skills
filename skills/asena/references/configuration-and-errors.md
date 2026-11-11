@@ -436,5 +436,5 @@ asena build              # production build
 bun dist/index.asena.js  # run it
 ```
 
-- **Graceful shutdown is on by default**: `SIGTERM`/`SIGINT`/`SIGHUP` call `server.stop()` — new work stops, `@OnStop` hooks run while transports are still up, then everything releases in order.- **Probes**: pass `health: { port }` to `AsenaServerFactory.create()`; point the restart policy at `{path}/live` and the load balancer at `{path}/ready` (default path `/healthz`). Readiness answers `503` for the whole drain, pulling the instance from rotation while it finishes work.
+- **Graceful shutdown is on by default**: `SIGTERM`/`SIGINT`/`SIGHUP` call `server.stop()` — new work stops, `@OnStop` hooks run while transports are still up, then everything releases in order. A second signal during the drain exits at once with `128 + signal number` (143 for `SIGTERM`).- **Probes**: pass `health: { port }` to `AsenaServerFactory.create()`; point the restart policy at `{path}/live` and the load balancer at `{path}/ready` (default path `/healthz`). Readiness answers `503` for the whole drain, pulling the instance from rotation while it finishes work.
 - Details: `https://asena.sh/raw/concepts/lifecycle.md`.

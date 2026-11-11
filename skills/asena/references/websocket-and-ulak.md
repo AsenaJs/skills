@@ -72,6 +72,7 @@ On close Asena removes the socket from `this.sockets` and Bun drops all its topi
 | `ws.send(message)` | Send to this client. Raw passthrough — pass a string/serialized payload yourself |
 | `ws.id` | Unique socket id |
 | `ws.data` | `WebSocketData<T>` (see above) |
+| `ws.binaryType` | `'nodebuffer'` (default) \| `'arraybuffer'` \| `'uint8array'` \| `'blob'` — setting it changes the type of the binary messages this socket receives from then on, so widen `onMessage`'s `message` type to match |
 | `ws.subscribe(room)` / `ws.unsubscribe(room)` | Join/leave a room (Bun pub/sub topic, tracked automatically) |
 | `ws.publish(room, data)` / `publishText` / `publishBinary` | Broadcast to room subscribers, **excluding the sender**. Raw passthrough |
 

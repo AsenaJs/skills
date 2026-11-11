@@ -297,7 +297,9 @@ const server = await AsenaServerFactory.create({
 | `forceExitAfter` | `number \| false` | `false` | Deadline on the **process**, not on `stop()`; timer is `unref()`'d; forced exit is non-zero |
 | `onUnhandledError` | `boolean` | `false` | Log, stop, exit non-zero — swallows the top-level stack, hence opt-in |
 
-A second signal during a running shutdown exits immediately with code `130`.
+A second signal during a signal-triggered shutdown exits immediately with `128 + signal number` (`130` for `SIGINT`, `143` for `SIGTERM`), also when another library listens for the same signal.
+
+After the stop, a signal leaves the process to the event loop: it exits when nothing holds it, and `forceExitAfter` bounds a leaked handle. Under `bun --hot` / `bun --watch` the file watcher holds the loop, so there the framework ends the process itself once every `stop()` running in it has settled — code `0`, or `1` when a signal-triggered stop failed (the failure is logged). Another listener of that signal, such as a telemetry exporter's own hook, gets to finish first: the exit waits until the event loop empties, at most `shutdown.timeout`. An explicit `server.stop()` never exits the process.
 
 ## keepAlive and Headless Workers
 
