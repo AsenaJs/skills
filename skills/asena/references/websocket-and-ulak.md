@@ -60,7 +60,7 @@ Declared `protected`, may be async. Only these are documented:
 | Method | Called when |
 |---|---|
 | `onOpen(ws: Socket<T>)` | Client connects |
-| `onMessage(ws: Socket<T>, message: string \| Buffer)` | Message received |
+| `onMessage(ws: Socket<T>, message: string \| Buffer \| ArrayBuffer \| Uint8Array \| Blob)` | Message received: a string, or binary data in the type `ws.binaryType` selects (`Buffer` by default). An override may declare only the types it receives — `message: string`, `message: string \| Buffer` |
 | `onClose(ws: Socket<T>)` | Client disconnects |
 
 On close Asena removes the socket from `this.sockets` and Bun drops all its topic subscriptions — use `onClose` only for your own state.
@@ -72,6 +72,7 @@ On close Asena removes the socket from `this.sockets` and Bun drops all its topi
 | `ws.send(message)` | Send to this client. Raw passthrough — pass a string/serialized payload yourself |
 | `ws.id` | Unique socket id |
 | `ws.data` | `WebSocketData<T>` (see above) |
+| `ws.binaryType` | `'nodebuffer'` (default) \| `'arraybuffer'` \| `'uint8array'` \| `'blob'` — setting it changes the type of the binary messages this socket receives from then on: `ArrayBuffer`, `Uint8Array` or `Blob`. Declare that type on `onMessage`'s `message`; no cast is needed |
 | `ws.subscribe(room)` / `ws.unsubscribe(room)` | Join/leave a room (Bun pub/sub topic, tracked automatically) |
 | `ws.publish(room, data)` / `publishText` / `publishBinary` | Broadcast to room subscribers, **excluding the sender**. Raw passthrough |
 

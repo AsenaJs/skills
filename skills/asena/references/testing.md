@@ -1,6 +1,6 @@
 # Testing
 
-Testing utilities for AsenaJS (as of `@asenajs/asena` 0.12.x): unit-level dependency mocking plus two integration harnesses, all exported from `@asenajs/asena/test`, built exclusively for Bun's test runner.
+Testing utilities for AsenaJS (as of `@asenajs/asena` 0.13.x): unit-level dependency mocking plus two integration harnesses, all exported from `@asenajs/asena/test`, built exclusively for Bun's test runner.
 
 ## Contents
 
@@ -342,6 +342,7 @@ const socket = new WebSocket(app.wsUrl('/ws/chat'));
 - **Cron runs for real.** `cronRunner.startAll()` executes at start-up — a `@Schedule` component in the test set will fire.
 - **`@OnStart` / `@OnStop` run for real.** Boot calls `server.start()`, cleanup calls `server.stop()` — that is what releases pools, subscribers and timers between test files.
 - **A throwing `@OnStart` fails the boot, not the process.** `createTestApp()` rejects with an error naming the hook (up to 0.9.x the container called `process.exit(1)` instead, reporting `0 pass / 1 fail` with no cause).
+- **`@ExceptionHandler` classes are never reached by the closure walk** — nothing injects them. List the handler in `components` (in `createWebTest` too) when the test asserts the error responses it produces; without it the adapter defaults answer.
 - **No signal listeners, no held loop.** The harness passes `shutdown: { signals: false }` and `keepAlive: false` — booting twenty apps in one suite installs nothing global.
 
 ## Full CRUD example

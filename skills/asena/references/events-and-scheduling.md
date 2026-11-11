@@ -103,7 +103,8 @@ export class UserService {
 ## Event Semantics and Rules
 
 - **Fire-and-forget:** `emit()` never waits, even for async handlers. There is no way to await handler completion — by design.
-- **Error isolation:** a throwing handler is caught and logged; other handlers and the emitter continue.
+- **Error isolation:** a throwing handler is caught and logged (`[EventDispatchService] Sync|Async error in handler for event "<name>"`); other handlers and the emitter continue.
+- **`@Catch` observes, it does not recover.** A matching `@Catch` in an `@ExceptionHandler` receives the failure with `ctx.scope === 'event'` (`ctx.event`, `ctx.data`, and `ctx.source` such as `UserEventService.handleCreated` — absent for a handler registered imperatively on the emitter). The default error line is logged regardless, and a value the `@Catch` returns is ignored with a warning. Use it to alert or count; to recover, catch inside the `@On` handler itself. An `@On` failure set off by an event a running `@Catch` emitted is logged but not offered to `@Catch` again, so a handler cannot loop on its own failures. See `configuration-and-errors.md`.
 - **No execution order guarantee** across handlers of one event. For sequencing, chain events: handler 1 emits the event handler 2 listens on.
 - **Keep handlers lightweight** — emit follow-up events (`email.send`, `report.generate`) instead of doing heavy work inline.
 - Handlers can emit further events (chains); `@On` handlers inherited from a base class are registered (see inheritance docs).
@@ -136,7 +137,7 @@ export interface AsenaSchedule {
 }
 ```
 
-If `execute()` throws, the framework catches and logs it; the schedule keeps running — one failure never stops future executions.
+If `execute()` throws, the framework catches and logs it; the schedule keeps running — one failure never stops future executions. A scheduled job is not an `@ExceptionHandler` scope: its failures never reach `@Catch`.
 
 **Note:** Cron expressions are validated with Bun's native `Bun.cron.parse()` **inside the decorator, at module import** — an invalid expression throws before `AsenaServerFactory.create()` is reached, so the server cannot start misconfigured. Nicknames (`@hourly`, `@daily`, `@weekly`, `@monthly`, `@yearly`) are accepted.
 
@@ -179,8 +180,9 @@ private cronRunner: CronRunner;
 | `getJobNames()` | `string[]` | Registered job names |
 | `registerJob(name, cron, fn)` | `void` | Register a job programmatically |
 | `startAll()` / `stopAll()` | `void` | Start/stop every registered job |
+| `runNow(name)` | `Promise<void>` | Run one job once, now, through the timed-run path (a failure is logged the same way, then rethrown); its schedule is untouched. Rejects for an unknown name, after `stopAll()`, and while that job is still running |
 | `clearJobs()` | `void` | Stop and drop all jobs |
 | `jobCount` | `number` | Registered job count |
 | `hasRunningJobs` | `boolean` | Any job **scheduled** (started, not stopped) — not "executing right now" |
 
-Lifecycle is automatic: jobs start when the server is ready — **after** every `@OnStart` has returned — and stop during graceful shutdown **before** any `@OnStop` runs (first step of `server.stop()` is "take no new work"). A job already executing at shutdown is not cancelled; `stopAll()` only unschedules future runs.
+Lifecycle is automatic: jobs start when the server is ready — **after** every `@OnStart` has returned — and stop during graceful shutdown **before** any `@OnStop` runs (first step of `server.stop()` is "take no new work"). A job already executing at shutdown is not cancelled; `stopAll()` only unschedules future runs. A job never overlaps itself: a tick that arrives while the previous run has not finished is skipped with a warning (`[Schedule] Skipped "<name>": the previous run has not finished`).

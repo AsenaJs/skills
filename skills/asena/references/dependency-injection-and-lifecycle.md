@@ -1,6 +1,6 @@
 # AsenaJS Dependency Injection & Lifecycle
 
-Field-based IoC wiring (`@Inject`/`@Value`/`@Strategy`), registering package components with `imports`, component scopes, `@OnStart`/`@OnStop` ordering and failure policy, inheritance rules, and `@PostProcessor` — as of `@asenajs/asena` 0.12.x.
+Field-based IoC wiring (`@Inject`/`@Value`/`@Strategy`), registering package components with `imports`, component scopes, `@OnStart`/`@OnStop` ordering and failure policy, inheritance rules, and `@PostProcessor` — as of `@asenajs/asena` 0.13.x.
 
 ## Contents
 
@@ -236,6 +236,8 @@ Every stop step is contained: a throwing step is logged, the rest still run, and
 | `@OnStart` | **Boot aborts.** Started components are rolled back, state → `FAILED`, `server.start()` rejects with an error naming the hook and carrying the original as `cause` | No timeout — a hook that never resolves is a `start()` that never resolves. A run-loop component starts its loop and returns (`void this.loop()`), it does not await it |
 | `@OnStop` | Logged and skipped; shutdown continues | Bounded per hook (default `5000` ms), then logged and skipped |
 
+Either `@OnStop` failure makes a signal-triggered shutdown exit `1` (see "Stopping the Server and Signal Handling").
+
 Use `@OnStart` for setup that must succeed at boot (open a pool, subscribe to a topic); validate recoverable input elsewhere. A failed boot does **not** stop the server for you — transports already connected stay up:
 
 ```typescript
@@ -286,6 +288,8 @@ const server = await AsenaServerFactory.create({
     timeout: 5000,            // per-@OnStop ceiling, ms
     forceExitAfter: false,    // number (ms) forces process exit after signal-triggered shutdown
     onUnhandledError: false,  // treat uncaught exception/rejection as shutdown request
+    closeActiveConnections: false, // a signal drains in-flight HTTP requests; true closes them at once
+    drainTimeout: 30_000,     // drain window a signal gives microservice transports, ms
   },
 });
 ```
@@ -296,8 +300,17 @@ const server = await AsenaServerFactory.create({
 | `timeout` | `number` | `5000` | Per-`@OnStop` ceiling; `stop({ hookTimeout })` overrides per call |
 | `forceExitAfter` | `number \| false` | `false` | Deadline on the **process**, not on `stop()`; timer is `unref()`'d; forced exit is non-zero |
 | `onUnhandledError` | `boolean` | `false` | Log, stop, exit non-zero — swallows the top-level stack, hence opt-in |
+| `closeActiveConnections` | `boolean` | `false` | What a signal-triggered shutdown does to in-flight HTTP requests: `false` drains them, `true` closes them at once. An explicit `stop()` keeps its own default (`true`) |
+| `drainTimeout` | `number` | transport's own | Drain window a signal-triggered shutdown passes to the microservice transports, ms |
 
-A second signal during a running shutdown exits immediately with code `130`.
+A second signal during a signal-triggered shutdown exits immediately with `128 + signal number` (`130` for `SIGINT`, `143` for `SIGTERM`), also when another library listens for the same signal.
+
+A signal-triggered shutdown that fails ends the process with exit code `1`, with or without a file watcher. It fails when `stop()` rejects (an adapter or transport that will not close) or when an `@OnStop` hook throws, rejects or runs out of `shutdown.timeout`; each failure is logged, and the remaining hooks and teardown steps still run. A clean one exits `0`. A non-zero `process.exitCode` the application already set is kept in both cases, with or without a file watcher. An explicit `await server.stop()` never sets the exit code and never exits the process.
+
+How the process ends after the stop:
+
+- **Plain `bun`:** the signal leaves the process to the event loop. It exits when nothing holds it, and `forceExitAfter` bounds a leaked handle. After a failed shutdown core sets `process.exitCode = 1`, unless the application already set a non-zero code.
+- **`bun --hot` / `bun --watch`:** the file watcher holds the loop, so core calls `process.exit` itself once every `stop()` running in the process has settled (an explicit one on another server included), whatever `forceExitAfter` is. It passes the application's non-zero `process.exitCode` on, and otherwise `1` after a failed shutdown and `0` after a clean one. With no other listener on that signal it exits at once. With one, such as a telemetry exporter's own hook, it exits when the event loop empties (`beforeExit`) or `shutdown.timeout` ms (default `5000`) after the stops settled, whichever comes first.
 
 ## keepAlive and Headless Workers
 

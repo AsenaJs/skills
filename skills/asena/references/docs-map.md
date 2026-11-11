@@ -67,7 +67,8 @@ Index of the full official documentation. Fetch any page as raw markdown from it
 |---|---|---|
 | CLI Overview | https://asena.sh/raw/cli/overview.md | Scaffolding, code generation, dev server, bundling |
 | CLI Installation | https://asena.sh/raw/cli/installation.md | Global install with Bun, verification |
-| CLI Commands | https://asena.sh/raw/cli/commands.md | create, generate, dev start, build, init, doctor, shortcuts |
+| CLI Commands | https://asena.sh/raw/cli/commands.md | create, generate, dev start, console, build, init, doctor, shortcuts |
+| Asena Console | https://asena.sh/raw/cli/console.md | asena console: options, the seven panels, Focus and Full views, security model |
 | CLI Configuration | https://asena.sh/raw/cli/configuration.md | asena-config.ts full reference |
 | Suffix Configuration | https://asena.sh/raw/cli/suffix-configuration.md | Component naming-convention customization |
 | CLI Examples | https://asena.sh/raw/cli/examples.md | Step-by-step project tutorial |
@@ -76,8 +77,8 @@ Index of the full official documentation. Fetch any page as raw markdown from it
 
 | Page | URL | Covers |
 |---|---|---|
-| Configuration | https://asena.sh/raw/guides/configuration.md | @Config: global middleware, error handling, env vars, transports |
-| Error Handling | https://asena.sh/raw/guides/error-handling.md | HttpException, global handlers, custom errors, duplicate-module forensics |
+| Configuration | https://asena.sh/raw/guides/configuration.md | @Config: serve options, global middleware, env vars, transports |
+| Error Handling | https://asena.sh/raw/guides/error-handling.md | @ExceptionHandler, @Catch, @NotFound, scopes and the resolution chain, HttpException and status exceptions, custom errors, duplicate-module forensics |
 | Deployment | https://asena.sh/raw/guides/deployment.md | Production build and deployment |
 
 ## Testing

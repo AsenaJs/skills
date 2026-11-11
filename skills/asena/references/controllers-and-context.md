@@ -1,6 +1,6 @@
 # Controllers & Context
 
-How to define HTTP routes with decorators and handle requests/responses through Asena's unified Context API, plus static file serving and frontend HTML controllers (as of @asenajs/asena 0.12.x, ergenecore / hono-adapter 5.x).
+How to define HTTP routes with decorators and handle requests/responses through Asena's unified Context API, plus static file serving and frontend HTML controllers (as of @asenajs/asena 0.13.x, ergenecore / hono-adapter 5.x).
 
 ## Contents
 
