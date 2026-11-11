@@ -176,8 +176,9 @@ How a run works:
 - **Output goes to both places:** the terminal and the Runtime panel. `Ctrl+C` stops the console and the app.
 - **Outside the console nothing runs.** Only the wrapper imports the agent, and core attaches it only when that hook is set in a process with an IPC channel; under `bun run`, `asena dev start` or an `asena build` bundle, request recording stays disabled and wraps no handler.
 - **An app that runs with `NODE_ENV=production` reports nothing**, even under the console: core does not attach the agent or record anything, and logs one warning (`devtools agent not attached: NODE_ENV is production; the console is a development tool`). The app itself runs normally.
-- **One server per process is reported.** When the process starts several `AsenaServer`s, the most recently started one sends the records and metrics and answers Run now / Emit / Send; when it stops, the one before it takes over. While a server is stopping, a command is refused (`The server is stopping; the command was not run`) instead of run.
-- **Output is captured per record.** `console.*` and `process.stdout` / `process.stderr` writes made while a request or dispatch is in scope are attached to it, console calls as the rendered text; every write still reaches the terminal. A console method the app replaced before the agent loaded is left as it is.
+- **The agent reports once `AsenaServer.start()` finishes.** When it has not reported after 10 s the console says so in the terminal and the browser (`The app's devtools agent has not reported yet…`) and shows only the app's output until it does; it cannot tell a slow start from an app under `NODE_ENV=production`.
+- **Every server of the process is reported.** Each `AsenaServer` the app starts attaches under its own server id, unique in the process and fixed for the server's life; its snapshot, its records and the results of its commands carry that id. With one server the console shows no picker and no server labels. With several, see "Several servers" below. While a server is stopping, a command is refused (`The server is stopping; the command was not run`) instead of run.
+- **Output is captured per record.** `console.*` and `process.stdout` / `process.stderr` writes made while a request or dispatch is in scope are attached to it, console calls as the rendered text; every write still reaches the terminal. The agent's module loads before any module of the app, so a console wrapper the app installs (one that redacts secrets, say) sits on top of the capture and the record holds what that wrapper prints. A console method replaced before the agent's module loaded is not recorded through that replacement.
 - **Telemetry is dropped before the app is slowed.** When the console is not reading fast enough, request records and metric samples are dropped and the metrics carry the count (`dropped`); commands and their answers are never dropped.
 - **Session data lives in the console process**, capped (last 2000 log lines, 500 requests, 120 metric samples), and is replayed when a browser reconnects. It is gone when the console stops. A headless app works too: everything but HTTP and WebSocket testing.
 
@@ -199,6 +200,13 @@ Focus and Full (Components):
 - **Focus** shows the selected component and its direct neighbours, in both directions. Clicking a neighbour moves the focus. More than 3 validators or core services collapse into one group node; clicking it expands the group. Search finds any component, and choosing a result moves the focus.
 - **Full** shows every component. On an app above the limit, core services and validators start hidden through the kind chips, nothing starts selected, the first fit follows the width with a 35% floor and is panned from there, and edges stay faint until a node is hovered or selected. A smaller app opens with its first controller selected.
 
+Several servers (an app that starts more than one `AsenaServer` in its process):
+
+- **A picker in the sidebar**, shown only then, names each server by adapter and port, and a headless one by its server id. It chooses whose components, endpoints, schedules, events, transports, config and exception handlers are on screen; the status pill and readiness follow it. Until one is picked, the most recently attached server that has not stopped is shown.
+- **Actions go to the picked server.** Run now, Emit, Send and the endpoint tester's requests carry its server id, and each command result says which server answered.
+- **Requests lists every server's records**, with a filter by server; an open record names its server, and replaying it in Endpoints needs that server picked.
+- **A server that stops while the process runs on** stays in the picker, marked `(stopped)`, and takes no actions; the other servers keep reporting and answering.
+
 The WebSocket tester connects straight from the browser to the app, so it can send no custom headers or subprotocol: a namespace behind token auth rejects it.
 
 Security model — a development tool on a trusted machine, never a Dockerfile or start-script command:
@@ -217,6 +225,7 @@ Security model — a development tool on a trusted machine, never a Dockerfile o
 | `[asena console] The app could not be started: …` | The component scan or the spawn failed (a syntax error, for instance); fix it and save |
 | `[asena console] The app's devtools agent speaks protocol v…` | CLI and core speak different versions and the app's messages are dropped; update them to match |
 | The app's output shows `devtools agent not attached: NODE_ENV is production…` and the panels have no app data | The app's process runs with `NODE_ENV=production` (set in code or a script, for instance); remove it for development |
+| `[asena console] The app's devtools agent has not reported yet (10 s)…` | `AsenaServer.start()` has not finished (a slow or hanging `@OnStart`, a transport that will not connect), or the app runs with `NODE_ENV=production`; the panels fill in when the agent reports |
 | Requests lists no HTTP rows | The adapter has no `attachDevtools()`: the app runs normally and only dispatches are recorded. Install the adapter release that pairs with core 0.13 |
 
 ## asena build
