@@ -175,6 +175,10 @@ How a run works:
 - **A failed start or a crash leaves the console up.** The error appears in the Runtime output; the next save or Restart tries again.
 - **Output goes to both places:** the terminal and the Runtime panel. `Ctrl+C` stops the console and the app.
 - **Outside the console nothing runs.** Only the wrapper imports the agent, and core attaches it only when that hook is set in a process with an IPC channel; under `bun run`, `asena dev start` or an `asena build` bundle, request recording stays disabled and wraps no handler.
+- **An app that runs with `NODE_ENV=production` reports nothing**, even under the console: core does not attach the agent or record anything, and logs one warning (`devtools agent not attached: NODE_ENV is production; the console is a development tool`). The app itself runs normally.
+- **One server per process is reported.** When the process starts several `AsenaServer`s, the most recently started one sends the records and metrics and answers Run now / Emit / Send; when it stops, the one before it takes over. While a server is stopping, a command is refused (`The server is stopping; the command was not run`) instead of run.
+- **Output is captured per record.** `console.*` and `process.stdout` / `process.stderr` writes made while a request or dispatch is in scope are attached to it, console calls as the rendered text; every write still reaches the terminal. A console method the app replaced before the agent loaded is left as it is.
+- **Telemetry is dropped before the app is slowed.** When the console is not reading fast enough, request records and metric samples are dropped and the metrics carry the count (`dropped`); commands and their answers are never dropped.
 - **Session data lives in the console process**, capped (last 2000 log lines, 500 requests, 120 metric samples), and is replayed when a browser reconnects. It is gone when the console stops. A headless app works too: everything but HTTP and WebSocket testing.
 
 The seven panels:
@@ -212,6 +216,7 @@ Security model — a development tool on a trusted machine, never a Dockerfile o
 | `No config file detected or invalid format` | No `asena-config.ts` below the working directory — run `asena init` or start from the project root |
 | `[asena console] The app could not be started: …` | The component scan or the spawn failed (a syntax error, for instance); fix it and save |
 | `[asena console] The app's devtools agent speaks protocol v…` | CLI and core speak different versions and the app's messages are dropped; update them to match |
+| The app's output shows `devtools agent not attached: NODE_ENV is production…` and the panels have no app data | The app's process runs with `NODE_ENV=production` (set in code or a script, for instance); remove it for development |
 | Requests lists no HTTP rows | The adapter has no `attachDevtools()`: the app runs normally and only dispatches are recorded. Install the adapter release that pairs with core 0.13 |
 
 ## asena build

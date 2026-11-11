@@ -359,7 +359,7 @@ await app.get('/users').expectStatus(200).expectJson([{ id: '1' }]);
 |---|---|
 | `asena create [name] --adapter=<hono\|ergenecore>` | Scaffold a project |
 | `asena generate controller\|service\|middleware\|validator\|config\|exception-handler\|websocket` (`asena g c\|s\|m\|v\|config\|eh\|ws`) | Generate a component |
-| `asena console` | Run the app in development with a browser console: component graph, runtime, endpoint tester, requests, messaging, config, exceptions. Needs core 0.13+; refuses `NODE_ENV=production` |
+| `asena console` | Run the app in development with a browser console: component graph, runtime, endpoint tester, requests, messaging, config, exceptions. Needs core 0.13+; refuses `NODE_ENV=production`, and core attaches nothing in an app that runs with it |
 | `asena build` | Production bundle → `dist/index.asena.js`. Does NOT rewrite your entry file; a hand-written `components:` array is yours and wins |
 | `asena init` | Create `asena-config.ts` |
 | `asena doctor` | Read-only project check (decorator flags, duplicate copies, peer ranges, minify settings, auth wiring); exit 1 on failure |
