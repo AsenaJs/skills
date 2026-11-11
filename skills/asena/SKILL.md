@@ -1,6 +1,6 @@
 ---
 name: asena
-description: Expert guidance for AsenaJS, the Bun IoC web framework with Spring Boot-style decorators and field-based DI. Use when creating or modifying AsenaJS projects or code importing @asenajs packages - controllers, routing, services, middleware, validation (route context contracts, Zod), error handling (exception handlers), authentication and sessions, WebSocket namespaces, Redis Streams/Kafka microservices, Redis caching, events, cron tasks, static files, Drizzle repositories, OpenAPI, OpenTelemetry, testing with mockComponent/createTestApp/createWebTest, the asena CLI. Triggers - asena, asenajs, Context.define, AsenaServerFactory, createErgenecoreAdapter, createHonoAdapter, ergenecore, hono-adapter, asena-auth, @Controller, @Service, @Inject, @Value, @OnStart, @ExceptionHandler, @Catch, @NotFound, HttpException, @Protected, @Auth, @BetterAuth, AuthGuard, authComponents, requireAuthSession, @WebSocket, @MessagePattern, @StaticServe, @FrontendController, AsenaLogger, ulak, asena-config, asena doctor, asena console.
+description: Guidance for AsenaJS, the Bun IoC framework with Spring Boot-style decorators and field-based DI. Use when creating or modifying AsenaJS projects or @asenajs code - controllers, routing, services, middleware, validation (route context contracts, Zod), error and exception handlers, authentication, sessions, WebSocket namespaces, Redis Streams/Kafka microservices, Redis caching, events, cron tasks, static files, Drizzle repositories, OpenAPI, OpenTelemetry, tests (mockComponent/createTestApp/createWebTest), asena CLI. Triggers - asena, asenajs, Context.define, AsenaServerFactory, createErgenecoreAdapter, createHonoAdapter, ergenecore, hono-adapter, asena-auth, @Controller, @Service, @Inject, @Value, @OnStart, @ExceptionHandler, @Catch, @NotFound, HttpException, @Protected, @Auth, @BetterAuth, AuthGuard, authComponents, requireAuthSession, @WebSocket, @MessagePattern, @Cacheable, @CachePut, @CacheEvict, @RedisCache, @StaticServe, @FrontendController, AsenaLogger, ulak, asena-config, asena doctor, asena console.
 version: 0.5.0
 license: MIT
 ---
@@ -104,7 +104,7 @@ Rules:
 
 ## Import cheatsheet
 
-All **core** decorators come from `@asenajs/asena` subpaths. Only `Context` (type, and the `Context.define()` value), the middleware/validator/config base classes, and adapter built-ins come from the adapter package (`@asenajs/ergenecore` or `@asenajs/hono-adapter`). Add-on packages export their own decorators: `@Database`/`@Repository`/`@Drizzle`/`@Transaction` (`@asenajs/asena-drizzle`), `@Redis`/`@RedisCache` (`@asenajs/asena-redis`), `@Kafka` (`@asenajs/asena-kafka`), `@Otel` (`@asenajs/asena-otel`), `@Hidden` (`@asenajs/asena-openapi`), `@Auth`/`@BetterAuth` (`@asenajs/asena-auth`).
+All **core** decorators come from `@asenajs/asena` subpaths. Only `Context` (type, and the `Context.define()` value), the middleware/validator/config base classes, and adapter built-ins come from the adapter package (`@asenajs/ergenecore` or `@asenajs/hono-adapter`). Add-on packages export their own decorators: `@Database`/`@Repository`/`@Drizzle`/`@Transaction` (`@asenajs/asena-drizzle`), `@Redis`/`@RedisCache`/`@Cacheable`/`@CachePut`/`@CacheEvict`/`@CacheConfig` (`@asenajs/asena-redis`), `@Kafka` (`@asenajs/asena-kafka`), `@Otel` (`@asenajs/asena-otel`), `@Hidden` (`@asenajs/asena-openapi`), `@Auth`/`@BetterAuth` (`@asenajs/asena-auth`).
 
 | Import from | Symbols |
 |---|---|
@@ -387,7 +387,7 @@ Output paths and class-name suffixes come from `asena-config.ts` — see `refere
 - **Validator factory reading request-time state** — with the default `validatorCache: true`, `json()`/`query()` run once at startup; state read inside the factory is frozen. Read mutable state in a `refine`/hook, or set `validatorCache: false`.
 - **Duplicate routes fail the boot** — `/x` and `/x/` for the same method (or two controllers resolving to the same canonical path) now throw at startup instead of one silently shadowing the other.
 - **Cross-adapter divergences were closed in adapter 4.0.0** — `getQuery` returns `undefined` for an absent key and `setResponseHeader` replaces on BOTH adapters, and both have `appendResponseHeader`. On an adapter `3.x` project the old split still applies (ergenecore `''` / hono `undefined`; hono's `setResponseHeader` appends), so check the installed version before relying on either. Prefer `?? default` over `|| default` for `getQuery`.
-- **The Redis cache decorators are silently inert** until a `@RedisCache` class extending `CachePostProcessor` exists in `src/` — methods still run, Redis is just never touched. `@Transaction` used to fail the same way; since asena-drizzle 3.1 it **fails the boot** instead (`@Transaction methods are not wrapped: ...`), which also fires when a transactional class sits inside a post-processor's dependency closure.
+- **The Redis cache decorators are silently inert** until a `@RedisCache` class extending `CachePostProcessor` is registered (source folder, or `imports` from a package) — methods still run, Redis is just never touched. `@Transaction` differs: an unwrapped method **fails the boot** (`@Transaction methods are not wrapped: ...`), which also fires when a transactional class sits inside a post-processor's dependency closure; a cached class there just stays uncached, with no error.
 - **A class in a PostProcessor's dependency closure is never post-processed** — Phase A constructs it before post-processing is active. Any decorator implemented by a processor silently stops applying to it. Keep processor dependencies minimal.
 
 ## Feature → reference routing
@@ -404,7 +404,7 @@ Read the reference before writing code in its area:
 | WebSocket namespaces, rooms, multi-pod, Ulak broker | `references/websocket-and-ulak.md` |
 | In-process events (`@On`), cron (`@Schedule`) | `references/events-and-scheduling.md` |
 | `@MessagePattern`, Redis Streams, Kafka (client + transport), headless services | `references/microservices.md` |
-| Drizzle repositories, transactions, Redis caching | `references/database-and-caching.md` |
+| Drizzle repositories, transactions, Redis caching (`@Cacheable`, `@CachePut`, `@CacheEvict`, `@RedisCache`) | `references/database-and-caching.md` |
 | Logging, OpenTelemetry tracing | `references/observability.md` |
 | OpenAPI generation (validators or contracts), Swagger UI / Scalar docs page | `references/openapi.md` |
 | Unit/web/full-app tests | `references/testing.md` |
