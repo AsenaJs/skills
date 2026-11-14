@@ -36,7 +36,7 @@ bun add @asenajs/hono-adapter hono zod     # hono adapter
 
 ## Bootstrap & Factory Signatures
 
-`createErgenecoreAdapter(options = {})` returns the adapter **alone**. `createHonoAdapter({ logger })` returns a **tuple** `[adapter, logger]` and **requires a logger** — calling it with no argument yields `[adapter, undefined]` and `AsenaServerFactory.create` then throws on the undefined logger.
+`createErgenecoreAdapter(options = {})` returns the adapter **alone**. `createHonoAdapter({ logger })` returns a **tuple** `[adapter, logger]`. Its logger is optional: with no argument, options without `logger`, or `logger: undefined`, it creates a console logger and returns that as the second element.
 
 ```typescript
 import { AsenaServerFactory } from '@asenajs/asena';
@@ -56,7 +56,7 @@ import { createHonoAdapter } from '@asenajs/hono-adapter';
 import { AsenaLogger } from '@asenajs/asena-logger';
 
 const [adapter, logger] = createHonoAdapter({ logger: new AsenaLogger() });
-// legacy form: createHonoAdapter(myLogger)
+// same: createHonoAdapter(new AsenaLogger())
 ```
 
 `AsenaServerFactory.create()` options: `adapter`, `logger`, `port?`, `components?` (register only listed classes — skips project scan, use in tests), `overrides?` (replace components with test doubles by service name), `headless?` (boot without adapter), `health?` (`{ port, path? }`, path defaults to `/healthz`), `shutdown?` (signal handling / `@OnStop` timeouts), `keepAlive?` (default true in headless mode, false otherwise), `gc?` (`boolean` — run `Bun.gc(true)` once after startup to release bootstrap garbage).
@@ -79,14 +79,14 @@ Two aliases exist; prefer the plain factory:
 
 ## Hono Adapter Options
 
-`createHonoAdapter(loggerOrOptions)` — bare logger (legacy) or options object (recommended). Returns `[adapter, logger]`.
+`createHonoAdapter(loggerOrOptions?)` — a logger or an options object. Anything with an `info` method is taken as the logger itself, also when it has a `logger` field of its own: `createHonoAdapter(new AsenaLogger())` uses the `AsenaLogger`. Returns `[adapter, logger]`.
 
 | Option | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `logger` | `ServerLogger` | Yes | — | Logger instance |
+| `logger` | `ServerLogger` | No | console logger | Logger instance |
 | `app` | `Hono` | No | — | Pre-configured Hono app |
 | `websocketAdapter` | `HonoWebsocketAdapter` | No | — | Custom WebSocket adapter |
-| `strict` | `boolean` | No | `true` | Strict trailing-slash matching: `/users` and `/users/` are **different** routes. Set `false` behind reverse proxies (Nginx, Cloudflare) to avoid slash-mismatch 404s |
+| `strict` | `boolean` | No | `false` | `false`: `/users/` reaches the `/users` route, as on ergenecore. `true`: the trailing-slash form answers 404. Ignored when `app` is passed (that app's own `strict` applies) |
 | `logErrors` | `boolean` | No | `true` | Same semantics as ergenecore's `logErrors` |
 
 ## Adapter Base Classes
@@ -269,17 +269,19 @@ Gains: IoC/`@Inject`, decorator routing, `ValidationService` (Zod), WebSocket in
 
 ## Custom Adapters
 
-Implement the `AsenaAdapter` interface from `@asenajs/asena/adapter`:
+Extend the abstract `AsenaAdapter` class from `@asenajs/asena/adapter`:
 
 ```typescript
-import type { AsenaAdapter } from '@asenajs/asena/adapter';
+import { AsenaAdapter, type AsenaStartOptions, type RouteParams } from '@asenajs/asena/adapter';
 
-export class MyCustomAdapter implements AsenaAdapter {
-  async start(port: number): Promise<void> { /* ... */ }
-  registerRoute(method: string, path: string, handler: Function): void { /* ... */ }
-  // ... other required methods
+export class MyCustomAdapter extends AsenaAdapter<MyContext, MySchema> {
+  public registerRoute(params: RouteParams<MyContext, MySchema>): void { /* params.method, params.path, params.handler, ... */ }
+  public async start(options?: AsenaStartOptions) { /* ... return the Bun server */ }
+  // ... other abstract members (setPort, use, registerHTMLRoute, registerWebsocketRoute, onError, serveOptions, stop)
 }
 ```
+
+The official adapters export their own `registerRoute()` parameter type — `ErgenecoreRouteParams` (`@asenajs/ergenecore`) and `HonoRouteParams` (`@asenajs/hono-adapter`): core's `RouteParams` with `staticServe` and `validator` optional (`null` also accepted on hono).
 
 **Warning:** `server.stop()` calls the adapter's `stop()` before any `@OnStop` hook; an adapter with WebSocket support must tear that layer down there (clear heartbeat timers, call the WebSocket transport's optional `destroy()`) — both official adapters do. Use the Ergenecore or hono-adapter source as the reference implementation.
 

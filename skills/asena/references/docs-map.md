@@ -31,6 +31,7 @@ Index of the full official documentation. Fetch any page as raw markdown from it
 | Middleware | https://asena.sh/raw/concepts/middleware.md | Global, pattern-based, controller- and route-level middleware |
 | Context API | https://asena.sh/raw/concepts/context.md | Unified request/response handling across adapters |
 | Validation | https://asena.sh/raw/concepts/validation.md | Route context contracts (Context.define), validator classes, validatorCache, error shapes |
+| Authentication | https://asena.sh/raw/concepts/authentication.md | The core auth contract: @Protected/@Public/@Roles marks, AuthSession/AuthUser, getAuthSession/requireAuthSession, AsenaAuthProvider, and the package that enforces them |
 | Static Files | https://asena.sh/raw/concepts/static-files.md | @StaticServe, lifecycle hooks, path configuration |
 | WebSocket | https://asena.sh/raw/concepts/websocket.md | Real-time namespaces, rooms, typed socket data |
 | Event System | https://asena.sh/raw/concepts/event-system.md | In-process fire-and-forget events, wildcard matching |

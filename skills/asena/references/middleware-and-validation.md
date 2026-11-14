@@ -15,7 +15,7 @@ How to write Asena middleware, attach it at the four levels, use adapter built-i
 
 ## Middleware class
 
-Extend the adapter's `MiddlewareService`, decorate with `@Middleware()`, implement `handle(context, next)`:
+Extend the adapter's `MiddlewareService`, decorate with `@Middleware()`, implement `handle(context, next)` — a `@Middleware()` class without `handle()` throws when the class is defined (`Class X must implement a 'handle(context, next)' method.`):
 
 ```typescript
 import { Middleware } from '@asenajs/asena/decorators';
@@ -273,7 +273,7 @@ Each returns a Zod schema or `{ schema, hook }`, and may be `async` (e.g. `@Inje
 | `header()` | request headers | yes |
 | `response()` | response shape by status code | no — OpenAPI documentation only |
 
-**Warning:** a validator defining only `response()` fails the `@Middleware({ validator: true })` check at import time and the process exits — at least one runtime method is required.
+**Warning:** a validator defining only `response()` fails the `@Middleware({ validator: true })` check: it throws when the class is defined (`Class X must implement at least one of the validator methods: …`) — at least one runtime method is required.
 
 ### Hooks
 

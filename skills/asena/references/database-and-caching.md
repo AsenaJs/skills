@@ -153,16 +153,16 @@ Always pass **both** generics (`typeof table`, database type) — without the se
 
 | Method | Signature | Notes |
 |---|---|---|
-| `findById` | `(id) => row \| undefined` | |
-| `findOne` | `(where) => row \| undefined` | Drizzle condition (`eq`, `and`, ...) |
+| `findById` | `(id) => row \| null` | |
+| `findOne` | `(where) => row \| null` | Drizzle condition (`eq`, `and`, ...) |
 | `findAll` | `(where?) => row[]` | No filter = all rows |
 | `findBy` | `(field, value) => row[]` | Typed shortcut for `findAll(eq(table[field], value))` |
-| `create` | `(data) => row` | |
-| `createMany` | `(data[]) => row[]` | |
-| `updateById` | `(id, data) => row` | |
-| `update` / `updateMany` | `(where, data)` | `updateMany` is a semantic alias |
-| `deleteById` | `(id)` | |
-| `delete` / `deleteMany` | `(where)` | `deleteMany` returns removed count |
+| `create` | `(data) => row` | Not on MySQL (below) |
+| `createMany` | `(data[]) => row[]` | Not on MySQL |
+| `updateById` | `(id, data) => row \| undefined` | Not on MySQL |
+| `update` / `updateMany` | `(where, data) => row[]` | `updateMany` is a semantic alias. Not on MySQL |
+| `deleteById` | `(id) => boolean` | Not on MySQL |
+| `delete` / `deleteMany` | `(where) => number` | Removed count. Not on MySQL |
 | `count` | `() => number` | |
 | `countBy` | `(where) => number` | |
 | `exists` | `(where) => boolean` | |
@@ -172,6 +172,8 @@ Always pass **both** generics (`typeof table`, database type) — without the se
 | `db` (getter) | raw Drizzle connection | Full query builder, joins, `db.execute(sql\`...\`)` |
 
 All methods are async. Inject repositories into services with `@Inject('UserRepository')`.
+
+**MySQL:** the write methods (`create`, `createMany`, `update`, `updateById`, `delete`, `deleteById`, and the `updateMany` / `deleteMany` aliases) read back through `.returning()`, which Drizzle's MySQL query builders do not have — on a `type: 'mysql'` database they reject with `Query builder does not support .returning() for this database driver`. Never generate these calls for a MySQL repository; write through `this.db` with Drizzle's MySQL query builder instead. The read methods do not use `.returning()`; `postgresql` and `bun-sql` are not affected.
 
 ## Transactions
 

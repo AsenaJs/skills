@@ -181,7 +181,7 @@ What runs for real: the controllers you pass, controller-level and route-level `
 
 ### The `mocks` object
 
-- Keyed by **service name**, not field name: `mocks.UserService` ✅, `mocks.userService` ❌ (`mockComponent` keys by field name — this is the one place they differ).
+- Keyed by **registered component name** (the class name, or the name given to `@Service('…')`, also for `@Inject(Class)`), not field name: `mocks.UserService` ✅, `mocks.userService` ❌ (`mockComponent` keys by field name — this is the one place they differ).
 - Exactly **one** mock per service, shared by every component that injects it — configure it once, assert anywhere.
 - Explicit `overrides` also appear in `mocks`, so it is the single place to reach every double.
 - `@Inject('Name')` string injections cannot be shaped: the mock falls back to `{}` and a warning is logged — pass an explicit override for those services.
