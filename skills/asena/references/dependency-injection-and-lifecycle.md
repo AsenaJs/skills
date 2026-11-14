@@ -46,7 +46,7 @@ A string token resolves the component's **registered name**: the class name by d
 - **Injected fields are read-only accessors.** `@Inject` and `@Strategy` install accessors with no setter — assignment throws, naming the field and class. In tests use the test app's `overrides` option or `mockComponent()`, never `Object.assign(instance, { dep: fake })`.
 - **`@Inject` resolves components, not values.** There is no value/constant registry: `@Inject('ENV_API_KEY')` throws `ENV_API_KEY is not registered` at startup. Use `@Value` for configuration (below), or a `@Service` that wraps it.
 - **A missing registration names its dependent.** `'UserService' is not registered (injected into UserController.userService)`, with the container's original error as `cause`.
-- **No circular dependencies.** `A → B → A` breaks the graph; extract shared logic into a third service both inject. For the WebSocket-service cycle specifically, inject a `ulak('/namespace')` handle instead of the `@WebSocket` class (see `https://asena.sh/raw/concepts/ulak.md`).
+- **No circular dependencies.** `A → B → A` fails the boot with `CircularDependencyError`, whose message lists the whole loop (`Circular dependency detected: A -> B -> A`); extract shared logic into a third service both inject. For the WebSocket-service cycle specifically, inject a `ulak('/namespace')` handle instead of the `@WebSocket` class (see `https://asena.sh/raw/concepts/ulak.md`).
 - **Inside a component, always use `@Inject`.** Resolving by hand works but hides the dependency from the graph, so the container can no longer order construction around it.
 
 ## @Value (configuration injection)
@@ -228,6 +228,7 @@ Every stop step is contained: a throwing step is logged, the rest still run, and
 
 - Start walks components in registration order; stop walks the same list backwards — a component still has its dependencies while releasing its own resources.
 - Within one class, multiple `@OnStart` methods run in declaration order (ancestors first when inherited); `@OnStop` methods run in the reverse. An inherited hook runs **once**, however deep the chain.
+- `@OnStart`, `@OnStop` and `@PostConstruct` work on symbol-keyed methods exactly as on string-named ones.
 
 ### Failure policy
 

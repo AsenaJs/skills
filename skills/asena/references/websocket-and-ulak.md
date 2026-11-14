@@ -81,8 +81,8 @@ Service-level members:
 | Member | Description |
 |---|---|
 | `this.sockets` | Map of connected sockets in this namespace (`.get(id)`, `.keys()`) |
-| `this.to(room, data)` | Broadcast to a room, sender included. **Serializes internally** — pass objects |
-| `this.in(data)` | Broadcast to all connected clients of the namespace. Serializes internally |
+| `this.to(room, data)` | Broadcast to a room, sender included. **Serializes internally** — pass objects. Throws `WebSocket server is not attached` while the namespace has no server (before the adapter attached one) |
+| `this.in(data)` | Broadcast to all connected clients of the namespace. Serializes internally; same `not attached` error |
 
 ## Rooms and Broadcasting
 

@@ -1,6 +1,6 @@
 # Asena CLI
 
-Command and configuration reference for `@asenajs/asena-cli` (as of 0.13.x): project scaffolding, code generation, dev runs, the browser console, diagnostics, and production bundling. Requires Bun >= 1.4.0; has no `@asenajs/asena` dependency — it reads the project's own core.
+Command and configuration reference for `@asenajs/asena-cli` (as of 0.14.x): project scaffolding, code generation, dev runs, the browser console, diagnostics, and production bundling. Requires Bun >= 1.4.0 (formatting a generated project with `bun fmt` needs Bun 1.4.4 or later); has no `@asenajs/asena` dependency — it reads the project's own core.
 
 ## Contents
 
@@ -46,9 +46,9 @@ bun install -g @asenajs/asena-cli   # install; verify with: asena --version
 Interactive without arguments; pass flags for SSH/CI (non-TTY prompts hang — always use flags there).
 
 ```bash
-asena create my-project --adapter=hono --logger --eslint --prettier
-asena create . --adapter=ergenecore --no-logger --no-eslint --no-prettier
-asena create my-app --adapter=hono   # prompts for the remaining options
+asena create my-project --adapter=hono --logger --eslint --format
+asena create . --adapter=ergenecore --no-logger --no-eslint --no-format
+asena create my-app --adapter=hono   # --adapter/--logger/--eslint/--format skip every prompt; unset ones take their defaults
 ```
 
 | Option | Values | Default |
@@ -57,9 +57,16 @@ asena create my-app --adapter=hono   # prompts for the remaining options
 | `--adapter <adapter>` | `hono`, `ergenecore` | prompted |
 | `--logger` / `--no-logger` | boolean | `true` |
 | `--eslint` / `--no-eslint` | boolean | `true` |
-| `--prettier` / `--no-prettier` | boolean | `true` |
+| `--format` / `--no-format` | boolean — set up formatting with `bun fmt` | `true` |
+| `--prettier` / `--no-prettier` | deprecated aliases of `--format` / `--no-format`; print a warning, and contradicting `--format` is an error | — |
+| `--skip-install` | write the dependencies to `package.json` without installing | off |
 
-Emits: `src/controllers/AsenaController.ts`, `src/index.ts`, `asena-config.ts`, `.asena/config.json` (+ schema), `package.json`, `tsconfig.json`, `.gitignore`; `src/logger/logger.ts` when logger enabled; ESLint/Prettier configs when enabled.
+Emits: `src/controllers/AsenaController.ts`, `src/index.ts`, `asena-config.ts`, `.asena/config.json` (+ schema), `package.json`, `tsconfig.json`, `.gitignore`; `src/logger/logger.ts` when logger enabled; `eslint.config.cjs` when ESLint is enabled.
+
+- **Formatting is `bun fmt`, not Prettier** — in a generated project format with `bun run format` / `bun run format:check`, never with `prettier`. With formatting on, `asena create` writes a `[fmt]` table to `bunfig.toml` and the scripts `format` (`bun fmt --no-config`) and `format:check` (`bun fmt --check --no-config`); it installs no `prettier` (`eslint-config-prettier` comes with ESLint). An existing `bunfig.toml` keeps its other settings, and keys its own `[fmt]` table already sets keep their values (named in a warning). Needs Bun 1.4.4 or later.
+- Scripts also include `typecheck` (`tsc --noEmit`), and with ESLint `lint` / `lint:fix`, with both `check` / `check:fix`.
+- Installs the version of `@asenajs/asena-cli` that is running (not the one on `PATH`) as a dev dependency; with `--skip-install`, `package.json` lists it as `latest`.
+- **Exits with code 1 when it fails** (for example, an existing `bunfig.toml` that is not valid TOML), after printing `Create failed:` with the error.
 
 **Note:** `services/`, `middlewares/`, `config/`, `exceptions/`, `namespaces/` are NOT pre-created — `asena generate` creates each folder on first use, and the component scanner walks the entire `sourceFolder` tree, so layout is convention only.
 
@@ -68,10 +75,8 @@ Emits: `src/controllers/AsenaController.ts`, `src/index.ts`, `asena-config.ts`, 
 Generation is adapter-aware: imports and base classes come from the adapter recorded in `.asena/config.json` (`ergenecore` shown; `hono` swaps the adapter package). Each command prompts for a name; the suffix (below) is appended automatically.
 
 ```typescript
-// asena g c User -> src/controllers/UserController.ts (body intentionally empty - add path + routes)
+// asena g c User -> src/controllers/UserController.ts (body intentionally empty - add path, routes and their imports)
 import { Controller } from '@asenajs/asena/decorators';
-import { Get } from '@asenajs/asena/decorators/http';
-import type { Context } from '@asenajs/ergenecore';
 
 @Controller()
 export class UserController {}
@@ -140,9 +145,17 @@ import { AsenaWebSocketService, type Socket } from '@asenajs/asena/web-socket';
 
 @WebSocket({ path: '/chat', name: 'ChatNamespace' })
 export class ChatNamespace extends AsenaWebSocketService {
-  protected async onOpen(ws: Socket): Promise<void> {}
-  protected async onMessage(ws: Socket, message: string): Promise<void> {}
-  protected async onClose(ws: Socket): Promise<void> {}
+  protected async onOpen(_ws: Socket): Promise<void> {
+    console.log('Client connected');
+  }
+
+  protected async onMessage(_ws: Socket, message: string): Promise<void> {
+    console.log('Message received:', message);
+  }
+
+  protected async onClose(_ws: Socket): Promise<void> {
+    console.log('Client disconnected');
+  }
 }
 ```
 
@@ -272,7 +285,7 @@ Run it first when diagnosing the silent failures below — `duplicate-packages` 
 
 ## asena init
 
-Creates `asena-config.ts` with defaults in an existing project (unnecessary after `asena create`):
+Creates `asena-config.ts` with defaults in an existing project (unnecessary after `asena create`), writes `.asena/config.json`, and installs the running version of `@asenajs/asena-cli` as a dev dependency:
 
 ```typescript
 import { defineConfig } from '@asenajs/asena-cli';

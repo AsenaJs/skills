@@ -18,7 +18,7 @@ Logging with `@asenajs/asena-logger` and tracing/metrics with `@asenajs/asena-ot
 bun add @asenajs/asena-logger
 ```
 
-Winston-based; implements the `ServerLogger` shape. As published (3.0.2) it peers `@asenajs/asena` `^0.11.0 || ^0.12.0 || ^0.13.0`. Requires Bun >= 1.4.0.
+Winston-based; implements the `ServerLogger` shape. As published (3.0.3) it peers `@asenajs/asena` `^0.11.0 || ^0.12.0 || ^0.13.0`. Requires Bun >= 1.4.0.
 
 **Standard pattern** — export one instance globally and import it everywhere:
 

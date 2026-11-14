@@ -1,7 +1,7 @@
 ---
 name: asena
 description: Guidance for AsenaJS, the Bun IoC framework with Spring Boot-style decorators and field-based DI. Use when creating or modifying AsenaJS projects or @asenajs code - controllers, routing, services, middleware, validation (route context contracts, Zod), error and exception handlers, authentication, sessions, WebSocket namespaces, Redis Streams/Kafka microservices, Redis caching, events, cron tasks, static files, Drizzle repositories, OpenAPI, OpenTelemetry, tests (mockComponent/createTestApp/createWebTest), asena CLI. Triggers - asena, asenajs, Context.define, AsenaServerFactory, createErgenecoreAdapter, createHonoAdapter, ergenecore, hono-adapter, asena-auth, @Controller, @Service, @Inject, @Value, @OnStart, @ExceptionHandler, @Catch, @NotFound, HttpException, @Protected, @Auth, @BetterAuth, AuthGuard, authComponents, requireAuthSession, @WebSocket, @MessagePattern, @Cacheable, @CachePut, @CacheEvict, @RedisCache, @StaticServe, @FrontendController, AsenaLogger, ulak, asena-config, asena doctor, asena console.
-version: 0.5.0
+version: 0.5.1
 license: MIT
 ---
 
@@ -11,23 +11,23 @@ AsenaJS is a decorator-based IoC web framework that runs ONLY on Bun. It looks l
 
 ## Version matrix
 
-Package versions are NOT aligned — do not assume one version number across packages. As of this skill's sync (the `@asenajs/asena` 0.13.0 release). If an installed package resolves lower than the table shows, the behaviour this file describes for it may not apply — check before relying on it.
+Package versions are NOT aligned — do not assume one version number across packages. As of this skill's sync (the `@asenajs/asena` 0.13.1 release). If an installed package resolves lower than the table shows, the behaviour this file describes for it may not apply — check before relying on it.
 
 | Package | npm | Version | Peer deps |
 |---|---|---|---|
-| Core framework | `@asenajs/asena` | 0.13.0 | — (`reflect-metadata` only runtime dep) |
-| CLI | `@asenajs/asena-cli` | 0.13.0 | — (no `@asenajs/asena` dependency; reads the project's own core) |
-| Hono adapter | `@asenajs/hono-adapter` | 5.2.0 | `hono` `>=4.12.9`, `zod` `^4.3.6`, core `^0.12.0 \|\| ^0.13.0` |
-| Ergenecore adapter (native Bun) | `@asenajs/ergenecore` | 5.1.0 | `zod` `^4.3.6`, core `^0.12.0 \|\| ^0.13.0` |
-| Auth (sessions, Better Auth, route guards) | `@asenajs/asena-auth` | 1.0.1 | core `^0.12.2 \|\| ^0.13.0`; `better-auth` `>=1.2.0 <2` optional (Better Auth provider only) |
-| Redis (cache + transports) | `@asenajs/asena-redis` | 4.1.0 | `redis` `^5.12.1`, core `^0.11.0 \|\| ^0.12.0 \|\| ^0.13.0` |
-| Kafka (client + transport) | `@asenajs/asena-kafka` | 4.0.2 | `kafkajs` `^2.2.4`, core `^0.11.0 \|\| ^0.12.0 \|\| ^0.13.0` |
+| Core framework | `@asenajs/asena` | 0.13.1 | — (`reflect-metadata` only runtime dep) |
+| CLI | `@asenajs/asena-cli` | 0.14.0 | — (no `@asenajs/asena` dependency; reads the project's own core) |
+| Hono adapter | `@asenajs/hono-adapter` | 5.3.0 | `hono` `>=4.12.9`, `zod` `^4.3.6`, core `^0.12.0 \|\| ^0.13.0` |
+| Ergenecore adapter (native Bun) | `@asenajs/ergenecore` | 5.2.0 | `zod` `^4.3.6`, core `^0.12.0 \|\| ^0.13.0` |
+| Auth (sessions, Better Auth, route guards) | `@asenajs/asena-auth` | 1.0.2 | core `^0.12.2 \|\| ^0.13.0`; `better-auth` `>=1.2.0 <2` optional (Better Auth provider only) |
+| Redis (cache + transports) | `@asenajs/asena-redis` | 4.1.1 | `redis` `^5.12.1`, core `^0.11.0 \|\| ^0.12.0 \|\| ^0.13.0` |
+| Kafka (client + transport) | `@asenajs/asena-kafka` | 4.0.3 | `kafkajs` `^2.2.4`, core `^0.11.0 \|\| ^0.12.0 \|\| ^0.13.0` |
 | OpenAPI | `@asenajs/asena-openapi` | 3.2.1 | `zod` `^4.3.6`, core `^0.12.0 \|\| ^0.13.0` |
-| OpenTelemetry | `@asenajs/asena-otel` | 3.0.2 | `@opentelemetry/*` SDK family (`api` `^1.9.0`, SDK packages `^2.6.0`), core `^0.11.0 \|\| ^0.12.0 \|\| ^0.13.0` |
-| Drizzle ORM | `@asenajs/asena-drizzle` | 4.1.1 | `drizzle-orm` `^0.45.2` (+ `pg` `>=8` or `mysql2` `>=2` per driver), core `^0.11.0 \|\| ^0.12.0 \|\| ^0.13.0` |
-| Logger | `@asenajs/asena-logger` | 3.0.2 | core `^0.11.0 \|\| ^0.12.0 \|\| ^0.13.0` |
+| OpenTelemetry | `@asenajs/asena-otel` | 3.0.3 | `@opentelemetry/*` SDK family (`api` `^1.9.0`, SDK packages `^2.6.0`), core `^0.11.0 \|\| ^0.12.0 \|\| ^0.13.0` |
+| Drizzle ORM | `@asenajs/asena-drizzle` | 4.1.2 | `drizzle-orm` `^0.45.2` (+ `pg` `>=8` or `mysql2` `>=2` per driver), core `^0.11.0 \|\| ^0.12.0 \|\| ^0.13.0` |
+| Logger | `@asenajs/asena-logger` | 3.0.3 | core `^0.11.0 \|\| ^0.12.0 \|\| ^0.13.0` |
 
-Both adapters and `asena-openapi` peer `@asenajs/asena` `^0.12.0 || ^0.13.0`; `asena-auth` peers `^0.12.2 || ^0.13.0`, is adapter-agnostic, and ships a `@asenajs/asena-auth/testing` subpath — on core 0.12 it needs ergenecore 5.0.2+ or hono-adapter 5.0.3+ (cookie deletion with attributes, `Set-Cookie` kept on error responses), on core 0.13 the adapter versions in the table; the other add-ons (redis, kafka, otel, drizzle, logger) peer `^0.11.0 || ^0.12.0 || ^0.13.0`. On core 0.13 every `@asenajs/*` package that peers core must be at least the version in the table — earlier releases do not accept 0.13 as a peer. `reflect-metadata` comes in through core. `asena-cli` 0.11.0 depends on `@asenajs/asena` `^0.11.0` (0.11.1 and later have no core dependency): on a 0.12 or 0.13 project it nests a second copy at `node_modules/@asenajs/asena-cli/node_modules/@asenajs/asena` that app code never resolves but `asena doctor`'s `duplicate-packages` check reports — upgrade the CLI to remove it. Every package requires **Bun >= 1.4.0**. There is no Node.js support — both adapters bind to `Bun.serve()`.
+Both adapters and `asena-openapi` peer `@asenajs/asena` `^0.12.0 || ^0.13.0`; `asena-auth` peers `^0.12.2 || ^0.13.0`, is adapter-agnostic, and ships a `@asenajs/asena-auth/testing` subpath — on core 0.12 it needs ergenecore 5.0.2+ or hono-adapter 5.0.3+ (cookie deletion with attributes, `Set-Cookie` kept on error responses), on core 0.13 ergenecore 5.1.0+ or hono-adapter 5.2.0+; the other add-ons (redis, kafka, otel, drizzle, logger) peer `^0.11.0 || ^0.12.0 || ^0.13.0`. On core 0.13 every `@asenajs/*` package that peers core must be a release that accepts 0.13 — ergenecore 5.1.0, hono-adapter 5.2.0, asena-openapi 3.2.1, asena-auth 1.0.1, asena-redis 4.1.0, asena-kafka 4.0.2, asena-otel 3.0.2, asena-drizzle 4.1.1, asena-logger 3.0.2 or later; earlier releases do not accept 0.13 as a peer. `reflect-metadata` comes in through core. `asena-cli` 0.11.0 depends on `@asenajs/asena` `^0.11.0` (0.11.1 and later have no core dependency): on a 0.12 or 0.13 project it nests a second copy at `node_modules/@asenajs/asena-cli/node_modules/@asenajs/asena` that app code never resolves but `asena doctor`'s `duplicate-packages` check reports — upgrade the CLI to remove it. Every package requires **Bun >= 1.4.0**. There is no Node.js support — both adapters bind to `Bun.serve()`.
 
 Error handling follows `@asenajs/asena` **0.13.0**: `@ExceptionHandler` / `@Catch` / `@NotFound`, the `@asenajs/asena/exception` subpath and the ready-made status exceptions (`NotFoundException`, …) need core 0.13.0; `@Config.onError` / `onNotFound` are deprecated in 0.13.0 and removed in 1.0.
 
@@ -67,7 +67,7 @@ Then `asena init` to create `asena-config.ts` (build + source-folder config).
 The two adapter factories are asymmetric — this is the most common hallucination target:
 
 - `createErgenecoreAdapter(options?)` returns **the adapter alone**; logger optional.
-- `createHonoAdapter({ logger })` returns **a tuple** `[adapter, logger]` and requires a logger.
+- `createHonoAdapter({ logger })` (or `createHonoAdapter(logger)`) returns **a tuple** `[adapter, logger]`; logger optional — without one it creates a console logger and returns it as the second element.
 
 ```typescript
 // src/index.ts — Ergenecore
@@ -357,7 +357,7 @@ await app.get('/users').expectStatus(200).expectJson([{ id: '1' }]);
 
 | Command | Effect |
 |---|---|
-| `asena create [name] --adapter=<hono\|ergenecore>` | Scaffold a project |
+| `asena create [name] --adapter=<hono\|ergenecore>` | Scaffold a project; formatting is `bun fmt` (`--format` / `--no-format`, needs Bun 1.4.4 or later); exits 1 on failure |
 | `asena generate controller\|service\|middleware\|validator\|config\|exception-handler\|websocket` (`asena g c\|s\|m\|v\|config\|eh\|ws`) | Generate a component |
 | `asena console` | Run the app in development with a browser console: component graph, runtime, endpoint tester, requests, messaging, config, exceptions. Shows every `AsenaServer` the process starts. Needs core 0.13+; refuses `NODE_ENV=production`, and core attaches nothing in an app that runs with it |
 | `asena build` | Production bundle → `dist/index.asena.js`. Does NOT rewrite your entry file; a hand-written `components:` array is yours and wins |

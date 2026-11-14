@@ -123,7 +123,7 @@ async create(context: Context) {
 
 The `getBody<T>()` generic is a cast — nothing checks the body against `T`. For validated, typed input declare a route context contract (`class CreateUserContext extends Context.define({ body: … }) {}` as the handler's parameter type): `getBody()` is then typed from the schema and the validated values are on `context.input`. See `middleware-and-validation.md`.
 
-**Warning:** Empty request body — ergenecore returns `{}`; hono may throw, so wrap `getBody()` in try/catch on hono.
+An empty or whitespace-only request body makes `getBody()` resolve `{}` on both adapters; a non-empty body that is not valid JSON rejects with `HttpException(400)` (`{ error: 'Invalid JSON in request body', message }`).
 
 Other body readers: `getParseBody()` (auto-detects JSON/form-data/URL-encoded by Content-Type), `getFormData()`, `getArrayBuffer()`, `getBlob()`.
 
@@ -137,7 +137,7 @@ if (!file || !(file instanceof File)) return context.send({ error: 'No file' }, 
 
 | Method | Return type |
 |:-------|:------------|
-| `getParam(name)` | `string` (sync) |
+| `getParam(name)` | `string` (sync) — `''` for a param the route does not declare and for an optional param (`/:id?`) the request leaves out |
 | `getQuery(name)` | `Promise<string \| undefined>` — `undefined` absent, `''` present-but-empty |
 | `getQueryAll(name)` | `Promise<string[]>` |
 | `getAllQueries()` | `Record<string, string \| string[]>` (sync) |
@@ -314,7 +314,7 @@ export class StaticController {
 |:-----|:----------|:--------|
 | `rewriteRequestPath` | `(reqPath: string) => string` | Transform the path before file lookup — strip prefixes, SPA fallback. Strip `..` here to block directory traversal. |
 | `onFound` | `(filePath: string, c: Context) => void \| Promise<void>` | Runs when a file is served — logging/analytics. `filePath` is not absolute and differs per adapter: ergenecore passes the rewritten request path, hono the root-joined path (`./public/index.html`). |
-| `onNotFound` | `(reqPath: string, c: Context) => void \| Promise<void>` | Observational — return value discarded, adapter still answers 404. Mark with `@Override()` (from `@asenajs/asena/decorators`) to make ergenecore skip its 404 and fall through to route handlers. |
+| `onNotFound` | `(reqPath: string, c: Context) => void \| Promise<void>` | Observational — return value discarded, adapter still answers 404. Mark with `@Override()` (from `@asenajs/asena/decorators`) to skip the 404 and continue to the route's handler, on both adapters (on hono the overriding hook receives Hono's native context). |
 
 **Warning:** `c.setResponseHeader()` inside `onFound` is silently dropped on ergenecore (static responses are built directly from the file; it works on hono). Use the portable `extra` property instead:
 
